@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from .graph import DEFAULT_DB, compiled_graph, draw_mermaid
+from .tracing import graph_config, status as tracing_status
 
 RULE = "=" * 70
 APPROVALS = {"", "approve", "approved", "ok", "yes"}
@@ -41,10 +42,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("a question is required (or --thread to resume, or --graph)")
 
     thread_id = args.thread or str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    config = graph_config(thread_id, question=args.question)
 
     with compiled_graph(args.db) as app:
-        print(f"thread_id: {thread_id}\n")
+        print(f"thread_id: {thread_id}")
+        print(f"{tracing_status()}\n")
 
         state = app.get_state(config)
         paused = bool(state.next)

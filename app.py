@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph
+from research_agent.tracing import graph_config, status as tracing_status
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
 load_dotenv()
@@ -38,12 +39,12 @@ APPROVALS = {"approve", "approved", "ok", "yes"}
 # --------------------------------------------------------------------------
 def read_state(thread_id: str):
     with compiled_graph(DEFAULT_DB) as app:
-        return app.get_state({"configurable": {"thread_id": thread_id}})
+        return app.get_state(graph_config(thread_id))
 
 
 def drive(payload, thread_id: str, status) -> None:
     """Stream the graph forward, writing each node update into `status`."""
-    config = {"configurable": {"thread_id": thread_id}}
+    config = graph_config(thread_id)
     with compiled_graph(DEFAULT_DB) as app:
         for chunk in app.stream(payload, config, stream_mode="updates"):
             for node, update in chunk.items():
@@ -80,7 +81,7 @@ def list_threads() -> list[tuple[str, str, bool]]:
     out = []
     with compiled_graph(DEFAULT_DB) as app:
         for tid in ids:
-            snap = app.get_state({"configurable": {"thread_id": tid}})
+            snap = app.get_state(graph_config(tid))
             out.append((tid, snap.values.get("question", "?"), bool(snap.next)))
     return out
 
@@ -137,6 +138,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
+    st.caption(tracing_status())
     st.caption(
         "Gemini's free tier allows ~20 requests per day **per model**. "
         "One run costs 3–5. Change `GEMINI_MODEL` in `.env` for a fresh "

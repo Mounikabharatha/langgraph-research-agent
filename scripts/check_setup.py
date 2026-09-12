@@ -62,4 +62,7 @@ except Exception as exc:
     print(f"FAILED\n   {type(exc).__name__}: {str(exc)[:400]}")
     sys.exit(1)
 
+from research_agent.tracing import status as tracing_status
+
+print(f"\n{tracing_status()}")
 print("\nEverything is working. You are ready to run the agent.")
