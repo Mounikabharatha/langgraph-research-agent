@@ -1,0 +1,12 @@
+# Core graph orchestration
+langgraph>=0.2.60
+langgraph-checkpoint-sqlite>=2.0.1
+
+# LLM + tools
+langchain-core>=0.3.28
+langchain-openai>=0.2.14
+langchain-tavily>=0.1.0
+
+# Misc
+python-dotenv>=1.0.1
+pydantic>=2.9.0

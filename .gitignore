@@ -1,0 +1,21 @@
+# Secrets - NEVER commit these
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Agent state checkpoints
+*.sqlite
+*.sqlite3
+checkpoints.db
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
