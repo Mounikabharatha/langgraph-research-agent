@@ -1,6 +1,17 @@
+"""The nodes. Each one is a pure-ish function: state in, partial update out.
+
+This is the heart of the project. Read it top to bottom and you understand
+the whole agent:
+
+    plan  ->  research  ->  synthesize  ->  critique  -+-> human_review -> finalize
+                  ^                                    |
+                  +-------- (gaps found, retry) -------+
+"""
+
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
 from .llm import get_llm
@@ -131,6 +142,43 @@ def critique_node(state: ResearchState) -> dict:
     }
 
 
+def human_review_node(state: ResearchState) -> dict:
+    """Pause the graph and hand control back to a human.
+
+    `interrupt()` raises out of the run and checkpoints everything. The caller
+    resumes later with `Command(resume=...)` and execution picks up right here,
+    even in a different process. This is LangGraph's real superpower.
+    """
+    feedback = interrupt(
+        {
+            "draft": state["draft"],
+            "critique": state.get("critique", ""),
+            "instructions": "Reply 'approve' to accept, or type revision notes.",
+        }
+    )
+    return {"human_feedback": str(feedback)}
+
+
+def finalize_node(state: ResearchState) -> dict:
+    """Apply the human's notes, if any, and emit the final report."""
+    feedback = (state.get("human_feedback") or "").strip()
+
+    if feedback.lower() in {"", "approve", "approved", "ok", "yes"}:
+        return {"final_report": state["draft"]}
+
+    llm = get_llm(temperature=0.2)
+    response = llm.invoke(
+        [
+            SystemMessage(
+                "Revise the draft according to the reviewer's notes. "
+                "Keep all inline citations intact."
+            ),
+            HumanMessage(f"Draft:\n{state['draft']}\n\nReviewer notes:\n{feedback}"),
+        ]
+    )
+    return {"final_report": response.content}
+
+
 # --------------------------------------------------------------------------
 # Conditional edge
 # --------------------------------------------------------------------------
@@ -149,4 +197,4 @@ def route_after_critique(state: ResearchState) -> str:
     # picky critic will loop forever and burn your API budget.
     if gaps and revision < max_revisions:
         return "research"
-    return "__end__"
+    return "human_review"
