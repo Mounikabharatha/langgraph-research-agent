@@ -13,7 +13,13 @@ from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
 
-from .nodes import plan_node, research_node, synthesize_node
+from .nodes import (
+    critique_node,
+    plan_node,
+    research_node,
+    route_after_critique,
+    synthesize_node,
+)
 from .state import ResearchState
 
 
@@ -24,11 +30,20 @@ def build_graph() -> StateGraph:
     builder.add_node("plan", plan_node)
     builder.add_node("research", research_node)
     builder.add_node("synthesize", synthesize_node)
+    builder.add_node("critique", critique_node)
 
     builder.add_edge(START, "plan")
     builder.add_edge("plan", "research")
     builder.add_edge("research", "synthesize")
-    builder.add_edge("synthesize", END)
+    builder.add_edge("synthesize", "critique")
+
+    # The self-correction loop. `path_map` lists every node the router may
+    # return, which lets LangGraph draw and validate the graph.
+    builder.add_conditional_edges(
+        "critique",
+        route_after_critique,
+        path_map={"research": "research", "__end__": END},
+    )
 
     return builder
 

@@ -7,6 +7,7 @@ from .llm import get_llm
 from .state import Finding, ResearchState
 from .tools import search
 
+DEFAULT_MAX_REVISIONS = 2
 
 
 # --------------------------------------------------------------------------
@@ -18,6 +19,15 @@ class Plan(BaseModel):
         description="3 to 5 specific, self-contained search queries",
         min_length=1,
         max_length=6,
+    )
+
+
+class Critique(BaseModel):
+    is_sufficient: bool = Field(description="True if the draft fully answers the question")
+    reasoning: str = Field(description="One or two sentences explaining the verdict")
+    gaps: list[str] = Field(
+        default_factory=list,
+        description="Follow-up search queries that would close the gaps. Empty if sufficient.",
     )
 
 
@@ -37,12 +47,20 @@ def plan_node(state: ResearchState) -> dict:
             HumanMessage(state["question"]),
         ]
     )
-    return {"plan": plan.sub_questions}
+    return {
+        "plan": plan.sub_questions,
+        "revision": 0,
+        "max_revisions": state.get("max_revisions", DEFAULT_MAX_REVISIONS),
+    }
 
 
 def research_node(state: ResearchState) -> dict:
-    """Run a web search for every sub-question in the plan."""
-    queries = state["plan"]
+    """Run a web search for every open sub-question.
+
+    On the first pass this uses `plan`. On a retry it uses `gaps` - the
+    follow-up queries the critic asked for.
+    """
+    queries = state.get("gaps") or state["plan"]
 
     findings: list[Finding] = []
     for query in queries:
@@ -88,3 +106,47 @@ def synthesize_node(state: ResearchState) -> dict:
         ]
     )
     return {"draft": response.content}
+
+
+def critique_node(state: ResearchState) -> dict:
+    """A second LLM acts as a critic. This is what makes the loop worthwhile."""
+    llm = get_llm().with_structured_output(Critique)
+    verdict: Critique = llm.invoke(
+        [
+            SystemMessage(
+                "You are a strict research reviewer. Decide whether the draft fully "
+                "and accurately answers the question using the cited sources. "
+                "If not, list specific follow-up search queries that would close "
+                "the gaps."
+            ),
+            HumanMessage(
+                f"Question: {state['question']}\n\nDraft:\n{state['draft']}"
+            ),
+        ]
+    )
+    return {
+        "critique": verdict.reasoning,
+        "gaps": [] if verdict.is_sufficient else verdict.gaps,
+        "revision": state.get("revision", 0) + 1,
+    }
+
+
+# --------------------------------------------------------------------------
+# Conditional edge
+# --------------------------------------------------------------------------
+def route_after_critique(state: ResearchState) -> str:
+    """Decide whether to loop back for more research or move on.
+
+    NOTE: a routing function returns the NAME of the next node. It does not
+    return a bool, and the graph method is `add_conditional_edges` (plural).
+    The roadmap PDF gets both of these wrong.
+    """
+    gaps = state.get("gaps") or []
+    revision = state.get("revision", 0)
+    max_revisions = state.get("max_revisions", DEFAULT_MAX_REVISIONS)
+
+    # The step limit is a real safety guard, not decoration: without it a
+    # picky critic will loop forever and burn your API budget.
+    if gaps and revision < max_revisions:
+        return "research"
+    return "__end__"
