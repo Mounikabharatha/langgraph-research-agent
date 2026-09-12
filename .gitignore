@@ -20,3 +20,6 @@ checkpoints.db
 .idea/
 .vscode/
 
+
+# Streamlit
+.streamlit/secrets.toml

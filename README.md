@@ -102,6 +102,20 @@ Note the OpenAI API is billed separately from ChatGPT Plus.
 
 ## Run it
 
+### Web UI
+
+```bash
+pip install -e ".[ui]"
+streamlit run app.py
+```
+
+Opens at http://localhost:8501. Type a question, watch each node fire live,
+then Approve or request changes. Past runs are listed in the sidebar — ⏸ marks
+one paused at the review gate, ✓ one that finished. Clicking a paused run
+reopens it exactly where it stopped, which is the checkpointer doing its job.
+
+### Command line
+
 ```bash
 python -m research_agent.cli "How do LangGraph checkpointers differ from LangChain memory?"
 ```
@@ -160,7 +174,7 @@ tests/          # runs without API keys
 - [x] Human-in-the-loop approval gate
 - [x] Tests + CI
 - [x] Works on Google Gemini (free tier) or OpenAI
-- [ ] Streamlit or FastAPI front end
+- [x] Streamlit front end
 - [ ] LangSmith tracing (set `LANGSMITH_TRACING=true` — see `.env.example`)
 - [ ] Postgres checkpointer for multi-user deployment
 - [ ] Vector store for long-term memory across sessions

@@ -20,6 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3.0"]
+ui = ["streamlit>=1.40", "watchdog>=4.0"]
 
 [project.scripts]
 research-agent = "research_agent.cli:main"
