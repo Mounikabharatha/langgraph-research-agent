@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "research-agent"
+version = "0.1.0"
+description = "A LangGraph research assistant that plans, searches, critiques itself, and asks for approval"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=0.2.60",
+    "langgraph-checkpoint-sqlite>=2.0.1",
+    "langchain-core>=0.3.28",
+    "langchain-google-genai>=2.0.0",
+    "langchain-openai>=0.2.14",
+    "langchain-tavily>=0.1.0",
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3.0"]
+
+[project.scripts]
+research-agent = "research_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
