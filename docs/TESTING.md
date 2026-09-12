@@ -214,6 +214,51 @@ command.
 
 ---
 
+## Test 9 - Tracing status is honest
+
+Tracing is off by default. Confirm the tooling says so:
+
+```bash
+.venv/bin/python scripts/check_setup.py
+```
+
+**Expect** the last lines to include:
+
+```
+tracing OFF (set LANGSMITH_TRACING=true to enable)
+```
+
+The CLI prints the same line under the thread id, and the UI shows it in the
+sidebar.
+
+### If you want to turn it on
+
+Get a free key at https://smith.langchain.com, then add to `.env`:
+
+```
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_...
+LANGSMITH_PROJECT=research-agent
+```
+
+Re-run `check_setup.py` - it should now say `tracing ON -> project
+'research-agent'`. Do a normal run, then open the project in LangSmith: you
+should see one trace named **research**, tagged `research-agent`, with each
+node nested inside it and the `thread_id` in its metadata.
+
+**Who did the work:** *Neither Gemini nor Tavily.* Tracing is a side channel -
+LangChain posts a copy of each call to LangSmith. It changes nothing about
+what the agent does.
+
+**The half-configured case is worth testing too.** Set `LANGSMITH_TRACING=true`
+but leave the API key out. The status line says *"tracing requested but
+LANGSMITH_API_KEY is missing - nothing will be sent"* rather than claiming
+tracing is on. A test in `tests/test_tracing.py` pins that down, because
+silently discarding traces is exactly the kind of thing you would discover
+three weeks later while debugging something else.
+
+---
+
 ## Done
 
 If 1-8 behave as described, the system is working end to end and it is time to

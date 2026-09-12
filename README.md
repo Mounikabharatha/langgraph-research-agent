@@ -48,6 +48,7 @@ researches again. Otherwise it goes to human review.
 | Loop guard | `max_revisions` | Stops a picky critic from burning your API budget forever |
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
+| Observability | `tracing.py` | Every run named and tagged, with `thread_id` in metadata |
 | Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |
 
 ## Background
@@ -99,6 +100,33 @@ costs 3–5 calls. Quota is tracked per model, so switching `GEMINI_MODEL` in
 
 To use OpenAI instead, set `LLM_PROVIDER=openai` and supply `OPENAI_API_KEY`.
 Note the OpenAI API is billed separately from ChatGPT Plus.
+
+## Tracing (optional)
+
+Add these to `.env` and every node call shows up in
+[LangSmith](https://smith.langchain.com) — prompt, response, token count and
+latency, per step:
+
+```
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_...
+LANGSMITH_PROJECT=research-agent
+```
+
+That is the whole setup. **Tracing is switched on by environment variables, not
+by code** — there is no `invoke_with_observability()`, whatever generated
+tutorials may claim.
+
+What `tracing.py` adds on top is the part that makes traces navigable: each run
+is given a `run_name`, tags, and — most usefully — the `thread_id` in its
+metadata, so a trace can be matched to a row in `checkpoints.db`. Without that
+every trace is called "LangGraph" and there is no way to tell which run it was.
+
+`scripts/check_setup.py`, the CLI and the UI all print the current tracing
+state, so you are never guessing whether it is on.
+
+> `langsmith` caches its environment reads, so `.env` has to be loaded before
+> the first graph call. Both entry points do this at startup.
 
 ## Run it
 
@@ -175,7 +203,7 @@ tests/          # runs without API keys
 - [x] Tests + CI
 - [x] Works on Google Gemini (free tier) or OpenAI
 - [x] Streamlit front end
-- [ ] LangSmith tracing (set `LANGSMITH_TRACING=true` — see `.env.example`)
+- [x] LangSmith tracing
 - [ ] Postgres checkpointer for multi-user deployment
 - [ ] Vector store for long-term memory across sessions
 
