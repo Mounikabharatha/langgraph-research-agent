@@ -30,8 +30,14 @@ def search(sub_question: str) -> list[Finding]:
     """Search the web for one sub-question and normalise the results."""
     raw = _tavily().invoke({"query": sub_question})
 
-    # TavilySearch returns {"results": [...]} in recent versions and a bare
-    # list in older ones. Handle both so a dependency bump does not break us.
+    # TavilySearch does NOT raise on API errors - it returns {"error": ...}.
+    # Swallowing that would make a bad API key look like "no results found",
+    # which is the worst kind of failure: silent and misleading.
+    if isinstance(raw, dict) and raw.get("error"):
+        raise RuntimeError(f"Tavily search failed: {raw['error']}")
+
+    # Recent versions return {"results": [...]}, older ones a bare list.
+    # Handle both so a dependency bump does not break us.
     results = raw.get("results", []) if isinstance(raw, dict) else raw
 
     return [

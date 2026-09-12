@@ -92,3 +92,18 @@ def test_finalize_passes_the_draft_through_on_approval(feedback):
     """No LLM should be called when the human just says yes."""
     result = nodes.finalize_node({"draft": "the answer", "human_feedback": feedback})
     assert result["final_report"] == "the answer"
+
+
+def test_search_raises_instead_of_silently_returning_nothing(monkeypatch):
+    """Tavily returns {"error": ...} rather than raising. If we swallowed that,
+    a dead API key would be indistinguishable from an empty web."""
+    from research_agent import tools
+
+    class FakeTavily:
+        def invoke(self, _payload):
+            return {"error": ValueError("Error 401: Unauthorized")}
+
+    monkeypatch.setattr(tools, "_tavily", lambda: FakeTavily())
+
+    with pytest.raises(RuntimeError, match="Tavily search failed"):
+        tools.search("anything")
