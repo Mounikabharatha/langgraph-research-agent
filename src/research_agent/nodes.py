@@ -116,7 +116,7 @@ def synthesize_node(state: ResearchState) -> dict:
             ),
         ]
     )
-    return {"draft": response.content}
+    return {"draft": response.text}
 
 
 def critique_node(state: ResearchState) -> dict:
@@ -176,7 +176,7 @@ def finalize_node(state: ResearchState) -> dict:
             HumanMessage(f"Draft:\n{state['draft']}\n\nReviewer notes:\n{feedback}"),
         ]
     )
-    return {"final_report": response.content}
+    return {"final_report": response.text}
 
 
 # --------------------------------------------------------------------------
