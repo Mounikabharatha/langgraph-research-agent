@@ -171,16 +171,43 @@ failure. Force it by lowering the bar: try a vague question like
 TAVILY_API_KEY=deliberately-wrong .venv/bin/python -m research_agent.cli "What is LangGraph?"
 ```
 
-**Expect:** an error mentioning `Tavily search failed: Error 401`.
+**Expect:** the run stops at `[research]` with
+
+```
+RuntimeError: All 4 searches failed - the search API is unreachable or
+TAVILY_API_KEY is invalid. Stopping rather than writing a report from nothing.
+  'what is LangGraph by LangChain' -> RuntimeError: Tavily search failed: Error 401 ...
+```
+
+You should **not** see `[synthesize]` or `[critique]`. The run ends after
+`[plan]`, costing 1 Gemini call instead of 5.
 
 **Who did the work:** **Gemini planned** (that call still succeeds), then
-**Tavily rejected** the key.
+**Tavily rejected** the key four times and `research_node` refused to continue.
 
-This one matters. Tavily's library *returns* `{"error": ...}` instead of
-raising, so an earlier version of `tools.py` read "no results" and the agent
-politely reported it could not find anything - with a broken key and no
-warning. Silent failure is the worst kind. Test 13 in the suite now locks this
-behaviour in.
+### Why this test exists
+
+Two bugs were found here, in sequence:
+
+1. **Tavily does not raise on API errors** - it *returns* `{"error": ...}`.
+   `tools.py` originally read `.get("results", [])`, got an empty list, and
+   treated a dead key as "the web has nothing". Fixed by checking for the
+   error key and raising.
+
+2. **`research_node` then swallowed that exception.** Its `except Exception`
+   turned every failure into a "Search failed" finding and carried on - so the
+   agent spent 5 Gemini calls, looped once, and produced a confident "the
+   provided sources do not contain information" report without ever mentioning
+   the search API was down.
+
+The current behaviour distinguishes the two cases:
+
+| Situation | Behaviour |
+|---|---|
+| *Some* queries fail | Degrade - keep the good findings, record the failures |
+| *Every* query fails | Raise - this is infrastructure, not a thin topic |
+
+Tests 12-14 in the suite lock all of this in.
 
 Your real key in `.env` is untouched - the bad value only exists for that one
 command.
