@@ -48,21 +48,41 @@ researches again. Otherwise it goes to human review.
 | Loop guard | `max_revisions` | Stops a picky critic from burning your API budget forever |
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
-| Graceful tool failure | `research_node` | A dead search API degrades the answer instead of crashing |
+| Loud tool failure | `tools.py` | A dead search API raises instead of quietly returning nothing |
 
 ## Setup
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-dev.txt
-cp .env.example .env      # then fill in your keys
+pip install -r requirements-dev.txt   # installs the package in editable mode
+cp .env.example .env                  # then fill in your keys
 ```
 
-You need two keys:
+You need two keys, both free:
 
-- `OPENAI_API_KEY` — https://platform.openai.com/api-keys
-- `TAVILY_API_KEY` — https://tavily.com (free tier: 1000 searches/month)
+- `GOOGLE_API_KEY` — https://aistudio.google.com/apikey (no credit card)
+- `TAVILY_API_KEY` — https://tavily.com (1000 searches/month)
+
+Then confirm both APIs actually respond:
+
+```bash
+python scripts/check_setup.py
+```
+
+### Choosing a model
+
+Gemini's free tier is roughly **20 requests per day, per model**, and one run
+costs 3–5 calls. Quota is tracked per model, so switching `GEMINI_MODEL` in
+`.env` gives you a fresh allowance:
+
+| Model | Trade-off |
+|---|---|
+| `gemini-3.1-flash-lite` (default) | Largest free allowance |
+| `gemini-3.5-flash` | Better reasoning, smaller allowance |
+
+To use OpenAI instead, set `LLM_PROVIDER=openai` and supply `OPENAI_API_KEY`.
+Note the OpenAI API is billed separately from ChatGPT Plus.
 
 ## Run it
 
@@ -76,10 +96,18 @@ Print the graph diagram instead of running:
 python -m research_agent.cli --graph
 ```
 
-Resume a previous run by its thread id (this works because of checkpointing):
+Press **Ctrl+C** at the approval prompt and the run pauses on disk. Resume it
+later — in a different process — with no re-research:
 
 ```bash
-python -m research_agent.cli --thread <thread-id> "..."
+python -m research_agent.cli --thread <thread-id>
+```
+
+Inspect what has been saved:
+
+```bash
+python scripts/list_threads.py              # every thread, finished or paused
+python scripts/inspect_thread.py <id>       # step-by-step checkpoint history
 ```
 
 ## Tests
@@ -91,6 +119,10 @@ pytest
 The tests run with **no API keys** — the LLM and search calls are faked — so CI
 is free. They cover the routing logic, the loop guard, reducer accumulation,
 and tool-failure handling.
+
+Because they fake both APIs, they cannot catch a provider changing its response
+shape. [docs/TESTING.md](docs/TESTING.md) is a manual plan that does, and it
+labels every step with whether Gemini, Tavily, or neither did the work.
 
 ## Layout
 
@@ -111,6 +143,7 @@ tests/          # runs without API keys
 - [x] SQLite checkpointing and resumable threads
 - [x] Human-in-the-loop approval gate
 - [x] Tests + CI
+- [x] Works on Google Gemini (free tier) or OpenAI
 - [ ] Streamlit or FastAPI front end
 - [ ] LangSmith tracing (set `LANGSMITH_TRACING=true` — see `.env.example`)
 - [ ] Postgres checkpointer for multi-user deployment
