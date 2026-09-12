@@ -48,7 +48,7 @@ researches again. Otherwise it goes to human review.
 | Loop guard | `max_revisions` | Stops a picky critic from burning your API budget forever |
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
-| Loud tool failure | `tools.py` | A dead search API raises instead of quietly returning nothing |
+| Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |
 
 ## Background
 

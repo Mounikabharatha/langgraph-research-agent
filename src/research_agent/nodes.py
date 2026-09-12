@@ -70,14 +70,21 @@ def research_node(state: ResearchState) -> dict:
 
     On the first pass this uses `plan`. On a retry it uses `gaps` - the
     follow-up queries the critic asked for.
+
+    One failing query degrades the answer. EVERY query failing means the
+    search API is down or the key is wrong, and that is not something to
+    write a report about - see the guard at the bottom.
     """
     queries = state.get("gaps") or state["plan"]
 
     findings: list[Finding] = []
+    failures: list[str] = []
+
     for query in queries:
         try:
             findings.extend(search(query))
-        except Exception as exc:  # a dead tool must not kill the whole run
+        except Exception as exc:  # one dead query must not kill the whole run
+            failures.append(f"{query!r} -> {type(exc).__name__}: {exc}")
             findings.append(
                 Finding(
                     sub_question=query,
@@ -86,6 +93,16 @@ def research_node(state: ResearchState) -> dict:
                     snippet=f"{type(exc).__name__}: {exc}",
                 )
             )
+
+    # Total failure is infrastructure, not a thin topic. Carrying on would
+    # spend several more LLM calls to produce a confident "no information
+    # available" report and never mention that the search API was dead.
+    if failures and len(failures) == len(queries):
+        raise RuntimeError(
+            f"All {len(queries)} searches failed - the search API is "
+            "unreachable or TAVILY_API_KEY is invalid. Stopping rather than "
+            "writing a report from nothing.\n  " + "\n  ".join(failures)
+        )
 
     # `findings` has an `operator.add` reducer, so this APPENDS to whatever
     # earlier passes already gathered.

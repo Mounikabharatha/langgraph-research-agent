@@ -60,17 +60,37 @@ def test_research_node_accumulates_findings(monkeypatch):
     assert len(result["findings"]) == 3
 
 
-def test_research_node_survives_a_failing_tool(monkeypatch):
-    """A dead search API should degrade the answer, not crash the agent."""
+def test_research_node_survives_one_failing_query(monkeypatch):
+    """A single dead query should degrade the answer, not crash the agent."""
+
+    def flaky_search(query: str) -> list[Finding]:
+        if query == "bad":
+            raise ConnectionError("tavily hiccup")
+        return [Finding(sub_question=query, title="t", url="u", snippet="s")]
+
+    monkeypatch.setattr(nodes, "search", flaky_search)
+
+    result = nodes.research_node({"plan": ["good", "bad"]})
+    assert len(result["findings"]) == 2
+    failed = [f for f in result["findings"] if f["title"] == "Search failed"]
+    assert len(failed) == 1
+    assert "ConnectionError" in failed[0]["snippet"]
+
+
+def test_research_node_raises_when_every_query_fails(monkeypatch):
+    """Total failure is infrastructure, not a thin topic.
+
+    Continuing would spend several more LLM calls producing a confident
+    "no information available" report that never mentions the API was dead.
+    """
 
     def exploding_search(query: str):
         raise ConnectionError("tavily is down")
 
     monkeypatch.setattr(nodes, "search", exploding_search)
 
-    result = nodes.research_node({"plan": ["q1"]})
-    assert len(result["findings"]) == 1
-    assert "ConnectionError" in result["findings"][0]["snippet"]
+    with pytest.raises(RuntimeError, match="All 3 searches failed"):
+        nodes.research_node({"plan": ["q1", "q2", "q3"]})
 
 
 def test_research_node_prefers_gaps_over_the_original_plan(monkeypatch):
