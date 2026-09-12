@@ -50,6 +50,22 @@ researches again. Otherwise it goes to human review.
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
 | Loud tool failure | `tools.py` | A dead search API raises instead of quietly returning nothing |
 
+## Background
+
+This project started from a ChatGPT deep-research report on LangGraph and
+agentic AI, kept here as
+[docs/langgraph-roadmap-analysis.pdf](docs/langgraph-roadmap-analysis.pdf).
+
+Two things worth knowing if you read it:
+
+- **It describes a team-scale system.** Page 10 estimates 60–100 person-weeks
+  across 3–6 developers. This repo implements the first of its three proposed
+  architectures — "Monolithic (Single Agent Graph)" from page 6 — which the
+  report itself recommends for a proof of concept with limited resources.
+- **Its code samples do not run.** Several LangGraph APIs in it do not exist.
+  See [A note on the LangGraph API](#a-note-on-the-langgraph-api) at the bottom
+  for the corrections; this codebase uses the real API throughout.
+
 ## Setup
 
 ```bash

@@ -20,5 +20,3 @@ checkpoints.db
 .idea/
 .vscode/
 
-# The source roadmap PDF - reference only, not part of the code
-*.pdf
