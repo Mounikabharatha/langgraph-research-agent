@@ -78,8 +78,11 @@ Two things worth knowing if you read it:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt   # installs the package in editable mode
-cp .env.example .env                  # then fill in your keys
+cp -n .env.example .env               # -n = never overwrite an existing .env
 ```
+
+> **Use `cp -n`.** A plain `cp` silently overwrites an existing `.env` and
+> destroys your keys. `-n` refuses to clobber.
 
 You need two keys, both free:
 
