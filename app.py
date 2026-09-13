@@ -257,14 +257,27 @@ if st.session_state.thread_id:
 
         st.divider()
         notes = st.text_area(
-            "Revision notes (leave empty to approve as-is)",
-            placeholder="Make it shorter. Add a section on trade-offs.",
+            "Revision notes — how should the draft above be rewritten?",
+            placeholder="Make it shorter. Drop the last section. Add trade-offs.",
             height=80,
+            help=(
+                "This rewrites the draft using the sources already gathered. "
+                "It cannot look anything new up — for that, ask a new question."
+            ),
         )
         ok, redo = st.columns(2)
+
         if ok.button("✅ Approve", type="primary", use_container_width=True):
-            resume("approve")
-            st.rerun()
+            if notes.strip():
+                # Approving would silently discard what they typed.
+                st.warning(
+                    "You have written revision notes. Press **Request changes** "
+                    "to apply them, or clear the box to approve the draft as-is."
+                )
+            else:
+                resume("approve")
+                st.rerun()
+
         if redo.button("✏️ Request changes", use_container_width=True):
             if notes.strip():
                 resume(notes.strip())
