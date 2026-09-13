@@ -68,8 +68,17 @@ def summarise(update) -> str:
     return " · ".join(bits)
 
 
-def list_threads() -> list[tuple[str, str, bool]]:
-    """Return (thread_id, question, is_paused) for every saved thread."""
+REVIEW_GATE = "human_review"
+
+
+def list_threads() -> list[tuple[str, str, str | None]]:
+    """Return (thread_id, question, next_node) for every saved thread.
+
+    `next_node` is None when the run finished. Otherwise it names the node the
+    run stopped before - which is only "human_review" for a genuine pause. Any
+    other value means the run died there, and must not be offered as a draft
+    to approve.
+    """
     import sqlite3
 
     try:
@@ -83,7 +92,9 @@ def list_threads() -> list[tuple[str, str, bool]]:
     with compiled_graph(DEFAULT_DB) as app:
         for tid in ids:
             snap = app.get_state(graph_config(tid))
-            out.append((tid, snap.values.get("question", "?"), bool(snap.next)))
+            out.append(
+                (tid, snap.values.get("question", "?"), snap.next[0] if snap.next else None)
+            )
     return out
 
 
@@ -131,8 +142,14 @@ with st.sidebar:
     threads = list_threads()
     if not threads:
         st.caption("Nothing yet — run something.")
-    for tid, question, paused in reversed(threads):
-        label = ("⏸ " if paused else "✓ ") + (question[:34] or "?")
+    for tid, question, next_node in reversed(threads):
+        if next_node is None:
+            icon = "✓ "          # finished
+        elif next_node == REVIEW_GATE:
+            icon = "⏸ "          # genuinely waiting for you
+        else:
+            icon = "⚠️ "          # died partway through
+        label = icon + (question[:32] or "?")
         if st.button(label, key=f"t_{tid}", use_container_width=True):
             st.session_state.thread_id = tid
             st.session_state.error = None
@@ -222,7 +239,17 @@ if st.session_state.thread_id:
     report = values.get("final_report")
     draft = values.get("draft")
 
-    if snap.next:  # paused at the review gate
+    stopped_at = snap.next[0] if snap.next else None
+
+    if stopped_at and stopped_at != REVIEW_GATE:
+        # Not a pause - the run failed at this node and has no draft.
+        st.warning(
+            f"This run stopped at **{stopped_at}** before producing a draft — "
+            "usually an API key or quota problem at the time. There is nothing "
+            "to approve. Ask the question again to start a fresh run."
+        )
+
+    elif stopped_at == REVIEW_GATE:
         st.subheader("Draft for review")
         if values.get("critique"):
             st.info(f"**Critic:** {values['critique']}")
