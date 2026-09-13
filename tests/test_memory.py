@@ -120,8 +120,57 @@ def test_planner_prompt_mentions_prior_research():
     context = nodes._recalled_context(
         [{"question": "what is a reducer", "report": "R", "score": 0.9}]
     )
-    assert "already researched" in context
+    assert "researched these related questions" in context
     assert "what is a reducer" in context
+
+
+def test_planner_prompt_treats_a_follow_up_differently():
+    """A carried parent is not the same as a similar past question - the
+    planner is told to answer the NEW question, not revisit the old one."""
+    context = nodes._recalled_context(
+        [{"question": "best gaming laptop", "report": "R", "carried": True}]
+    )
+    assert "FOLLOW-UP" in context
+    assert "best gaming laptop" in context
+
+
+def test_follow_up_context_includes_the_parent_answer():
+    """Passing only the parent QUESTION is not enough. Without the answer text,
+    "what does it cost?" plans generic searches; with it, the planner puts the
+    actual product name in every query."""
+    context = nodes._recalled_context([{
+        "question": "which laptop is best for gaming?",
+        "report": "The Alienware m18 R2 with RTX 4090 is the top pick.",
+        "carried": True,
+    }])
+    assert "Alienware m18 R2" in context
+    assert "Resolve any pronouns" in context
+
+
+def test_follow_up_context_truncates_a_long_parent_report():
+    context = nodes._recalled_context([{
+        "question": "q", "report": "Z" * 5000, "carried": True,
+    }])
+    assert context.count("Z") == nodes.PARENT_EXCERPT_CHARS
+
+
+def test_recall_node_keeps_a_carried_parent_and_adds_search_hits():
+    parent = {"question": "best gaming laptop", "report": "R", "carried": True}
+    store = FakeStore([FakeHit("laptop cooling systems", "R2", 0.9)])
+
+    out = nodes.recall_node({"question": "what does it cost", "recalled": [parent]}, store=store)
+
+    assert out["recalled"][0]["carried"] is True, "the parent must survive recall"
+    assert len(out["recalled"]) == 2
+
+
+def test_recall_node_does_not_duplicate_the_parent():
+    parent = {"question": "best gaming laptop", "report": "R", "carried": True}
+    store = FakeStore([FakeHit("best gaming laptop", "R", 0.99)])
+
+    out = nodes.recall_node({"question": "follow up", "recalled": [parent]}, store=store)
+
+    assert len(out["recalled"]) == 1
 
 
 def test_planner_context_is_empty_with_no_memories():

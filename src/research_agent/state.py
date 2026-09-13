@@ -21,12 +21,18 @@ class Finding(TypedDict):
     snippet: str
 
 
-class Memory(TypedDict):
-    """A finished report from an earlier run, surfaced by semantic search."""
+class Memory(TypedDict, total=False):
+    """A report from an earlier run.
+
+    Usually surfaced by semantic search. `carried` marks the special case of a
+    follow-up question, where the parent report is handed over deliberately
+    rather than found by similarity.
+    """
 
     question: str
     report: str
     score: float
+    carried: bool
 
 
 class ResearchState(TypedDict, total=False):

@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph
-from research_agent.memory import status as memory_status
+from research_agent.memory import forget, open_store, status as memory_status
 from research_agent.tracing import graph_config, status as tracing_status
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
@@ -105,20 +105,31 @@ st.session_state.setdefault("thread_id", None)
 st.session_state.setdefault("error", None)
 
 
-def start(question: str, max_revisions: int) -> None:
+def start(question: str, max_revisions: int, parent: dict | None = None) -> None:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.error = None
+    payload = {"question": question, "max_revisions": max_revisions}
+    if parent:
+        # Hand the previous report over deliberately. recall_node keeps it and
+        # adds anything semantic search finds on top.
+        payload["recalled"] = [parent]
     with st.status("Researching…", expanded=True) as status:
         try:
-            drive(
-                {"question": question, "max_revisions": max_revisions},
-                st.session_state.thread_id,
-                status,
-            )
+            drive(payload, st.session_state.thread_id, status)
             status.update(label="Ready for review", state="complete")
         except Exception as exc:
             st.session_state.error = f"{type(exc).__name__}: {exc}"
             status.update(label="Stopped", state="error")
+
+
+def delete_run(thread_id: str, question: str, also_forget: bool) -> None:
+    """Remove a saved run, and optionally the memory it left behind."""
+    with compiled_graph(DEFAULT_DB) as app:
+        app.checkpointer.delete_thread(thread_id)
+    if also_forget:
+        with open_store() as store:
+            forget(store, question)
+    st.session_state.thread_id = None
 
 
 def resume(feedback: str) -> None:
@@ -294,5 +305,46 @@ if st.session_state.thread_id:
             file_name="research-report.md",
             mime="text/markdown",
         )
+
+        # ---- Ask a follow-up ----
+        st.divider()
+        st.markdown("#### Ask a follow-up")
+        st.caption(
+            "Starts a **new run** with this report handed over as context, so "
+            "you can say \"it\" and \"that laptop\". A follow-up does fresh "
+            "searches — unlike Request changes, which only rewrites a draft."
+        )
+        follow_up = st.text_input(
+            "Follow-up question",
+            placeholder="What does it cost? How does it compare to the alternatives?",
+            label_visibility="collapsed",
+            key=f"fu_{st.session_state.thread_id}",
+        )
+        if st.button("🔎 Research follow-up", use_container_width=True):
+            if follow_up.strip():
+                start(
+                    follow_up.strip(),
+                    int(max_revisions),
+                    parent={
+                        "question": values.get("question", ""),
+                        "report": report,
+                        "carried": True,
+                    },
+                )
+                st.rerun()
+            else:
+                st.warning("Type a follow-up question first.")
+
+    # ---- Delete ----
+    st.divider()
+    with st.expander("🗑️ Delete this run"):
+        st.caption(
+            "Removes the run and its checkpoints. Cannot be undone. The report "
+            "it saved to long-term memory is separate — tick below to drop that too."
+        )
+        also_forget = st.checkbox("Also forget it from long-term memory")
+        if st.button("Delete permanently", type="secondary"):
+            delete_run(st.session_state.thread_id, values.get("question", ""), also_forget)
+            st.rerun()
 
     st.caption(f"thread `{st.session_state.thread_id}`")

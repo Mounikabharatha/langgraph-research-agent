@@ -126,6 +126,24 @@ def remember(
         return False
 
 
+def forget(store: "BaseStore | None", question: str) -> bool:
+    """Remove a remembered report so it stops being recalled."""
+    if store is None:
+        return False
+    try:
+        store.delete(NAMESPACE, memory_key(question))
+        return True
+    except Exception:
+        return False
+
+
+def memory_key(question: str) -> str:
+    """Stable key for a question, so re-asking updates one entry."""
+    import hashlib
+
+    return hashlib.sha256(question.strip().lower().encode()).hexdigest()[:32]
+
+
 def status() -> str:
     if not memory_enabled():
         return "long-term memory OFF (set MEMORY_ENABLED=true and GOOGLE_API_KEY)"

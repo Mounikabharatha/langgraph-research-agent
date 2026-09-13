@@ -12,7 +12,6 @@ the whole agent:
 
 from __future__ import annotations
 
-import hashlib
 from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -21,11 +20,15 @@ from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
 from .llm import get_llm
-from .memory import recall, remember
+from .memory import memory_key, recall, remember
 from .state import Finding, Memory, ResearchState
 from .tools import search
 
 DEFAULT_MAX_REVISIONS = 2
+
+# How much of a carried-over report to show the planner. Enough to resolve
+# "it" / "that one", short enough not to crowd out the new question.
+PARENT_EXCERPT_CHARS = 700
 
 
 # --------------------------------------------------------------------------
@@ -65,20 +68,47 @@ def recall_node(state: ResearchState, *, store: Optional[BaseStore]) -> dict:
 
     When the graph is compiled without a store, LangGraph passes None.
     """
-    return {"recalled": recall(store, state["question"])}
+    # A follow-up run is seeded with its parent report already in `recalled`.
+    # Keep it, and add anything semantic search turns up that is not a repeat.
+    carried = list(state.get("recalled") or [])
+    seen = {m.get("question") for m in carried}
+    found = [m for m in recall(store, state["question"]) if m.get("question") not in seen]
+    return {"recalled": carried + found}
 
 
 def _recalled_context(recalled: list[Memory]) -> str:
     if not recalled:
         return ""
-    lines = "\n".join(
-        f"- {m['question']} (similarity {m['score']})" for m in recalled
-    )
-    return (
-        "\n\nYou have already researched these related questions in the past:\n"
-        f"{lines}\n"
-        "Bias your sub-questions towards what those would NOT already cover."
-    )
+    parent = [m for m in recalled if m.get("carried")]
+    similar = [m for m in recalled if not m.get("carried")]
+
+    parts = []
+    if parent:
+        # The earlier ANSWER matters as much as the earlier question: without it
+        # a follow-up like "what does it cost?" has no idea what "it" is, and
+        # the planner falls back to generic searches.
+        blocks = "\n\n".join(
+            f"Earlier question: {m.get('question', '')}\n"
+            f"Earlier answer (extract):\n{(m.get('report') or '')[:PARENT_EXCERPT_CHARS]}"
+            for m in parent
+        )
+        parts.append(
+            "This is a FOLLOW-UP. The question below has already been researched "
+            f"and answered:\n\n{blocks}\n\n"
+            "Resolve any pronouns in the new question against that answer - if it "
+            "names a specific product, person or place, put that name in your "
+            "search queries. Plan sub-questions that answer the NEW question "
+            "specifically, without re-covering ground the earlier answer holds."
+        )
+    if similar:
+        parts.append(
+            "You have also researched these related questions before:\n"
+            + "\n".join(
+                f"- {m.get('question', '')} (similarity {m.get('score')})" for m in similar
+            )
+            + "\nBias your sub-questions towards what those would NOT already cover."
+        )
+    return "\n\n" + "\n\n".join(parts)
 
 
 def plan_node(state: ResearchState) -> dict:
@@ -244,7 +274,7 @@ def remember_node(state: ResearchState, *, store: Optional[BaseStore]) -> dict:
         store,
         # Key on the question, so re-researching it updates the memory
         # instead of piling up near-duplicate entries.
-        key=hashlib.sha256(state["question"].strip().lower().encode()).hexdigest()[:32],
+        key=memory_key(state["question"]),
         question=state["question"],
         report=state.get("final_report", ""),
     )
