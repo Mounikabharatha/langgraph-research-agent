@@ -15,11 +15,14 @@ from contextlib import contextmanager
 
 from langgraph.graph import END, START, StateGraph
 
+from .memory import open_store
 from .nodes import (
     critique_node,
     finalize_node,
     human_review_node,
     plan_node,
+    recall_node,
+    remember_node,
     research_node,
     route_after_critique,
     synthesize_node,
@@ -33,14 +36,17 @@ def build_graph() -> StateGraph:
     """Assemble the graph. Kept separate from compile() so tests can inspect it."""
     builder = StateGraph(ResearchState)
 
+    builder.add_node("recall", recall_node)
     builder.add_node("plan", plan_node)
     builder.add_node("research", research_node)
     builder.add_node("synthesize", synthesize_node)
     builder.add_node("critique", critique_node)
     builder.add_node("human_review", human_review_node)
     builder.add_node("finalize", finalize_node)
+    builder.add_node("remember", remember_node)
 
-    builder.add_edge(START, "plan")
+    builder.add_edge(START, "recall")
+    builder.add_edge("recall", "plan")
     builder.add_edge("plan", "research")
     builder.add_edge("research", "synthesize")
     builder.add_edge("synthesize", "critique")
@@ -54,7 +60,8 @@ def build_graph() -> StateGraph:
     )
 
     builder.add_edge("human_review", "finalize")
-    builder.add_edge("finalize", END)
+    builder.add_edge("finalize", "remember")
+    builder.add_edge("remember", END)
 
     return builder
 
@@ -63,14 +70,19 @@ def build_graph() -> StateGraph:
 def compiled_graph(db_path: str = DEFAULT_DB):
     """Compile the graph with SQLite checkpointing.
 
-    The checkpointer is what makes the agent *durable*: every state mutation is
-    saved, so an interrupted run can resume in a later process, and you can
-    replay or inspect any past step by thread_id.
+    Two kinds of memory are attached here, and they do different jobs:
+
+    - `checkpointer` is short-term. It saves every state mutation for one
+      thread, so an interrupted run resumes in a later process and any past
+      step can be replayed by thread_id.
+    - `store` is long-term. It holds finished reports from *every* run,
+      searchable semantically, so a new question can benefit from research
+      done weeks ago. It is None when memory is switched off.
     """
     from langgraph.checkpoint.sqlite import SqliteSaver
 
-    with SqliteSaver.from_conn_string(db_path) as checkpointer:
-        yield build_graph().compile(checkpointer=checkpointer)
+    with SqliteSaver.from_conn_string(db_path) as checkpointer, open_store() as store:
+        yield build_graph().compile(checkpointer=checkpointer, store=store)
 
 
 def draw_mermaid() -> str:

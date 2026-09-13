@@ -21,9 +21,20 @@ class Finding(TypedDict):
     snippet: str
 
 
+class Memory(TypedDict):
+    """A finished report from an earlier run, surfaced by semantic search."""
+
+    question: str
+    report: str
+    score: float
+
+
 class ResearchState(TypedDict, total=False):
     # --- input ---
     question: str
+
+    # --- long-term memory (across runs, not just this thread) ---
+    recalled: list[Memory]
 
     # --- planning ---
     plan: list[str]

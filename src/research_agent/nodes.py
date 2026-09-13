@@ -3,19 +3,26 @@
 This is the heart of the project. Read it top to bottom and you understand
 the whole agent:
 
-    plan  ->  research  ->  synthesize  ->  critique  -+-> human_review -> finalize
-                  ^                                    |
-                  +-------- (gaps found, retry) -------+
+    recall -> plan -> research -> synthesize -> critique -+-> human_review
+                          ^                                |
+                          +------ (gaps found, retry) ------+
+                                                           |
+                                       finalize -> remember +
 """
 
 from __future__ import annotations
 
+import hashlib
+from typing import Optional
+
 from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
 from .llm import get_llm
-from .state import Finding, ResearchState
+from .memory import recall, remember
+from .state import Finding, Memory, ResearchState
 from .tools import search
 
 DEFAULT_MAX_REVISIONS = 2
@@ -45,6 +52,35 @@ class Critique(BaseModel):
 # --------------------------------------------------------------------------
 # Nodes
 # --------------------------------------------------------------------------
+def recall_node(state: ResearchState, *, store: Optional[BaseStore]) -> dict:
+    """Look for research we already did on a similar question.
+
+    `store` is injected by LangGraph, which decides by resolving this
+    annotation. It must be spelled `Optional[BaseStore]`, NOT
+    `BaseStore | None`: with `from __future__ import annotations` the PEP 604
+    union stays a string that LangGraph cannot resolve, so it injects nothing
+    and the call fails with "missing keyword-only argument". Verified against
+    langgraph 1.2 - `BaseStore`, `Optional[BaseStore]` and `BaseStore = None`
+    all work; only the `|` form does not.
+
+    When the graph is compiled without a store, LangGraph passes None.
+    """
+    return {"recalled": recall(store, state["question"])}
+
+
+def _recalled_context(recalled: list[Memory]) -> str:
+    if not recalled:
+        return ""
+    lines = "\n".join(
+        f"- {m['question']} (similarity {m['score']})" for m in recalled
+    )
+    return (
+        "\n\nYou have already researched these related questions in the past:\n"
+        f"{lines}\n"
+        "Bias your sub-questions towards what those would NOT already cover."
+    )
+
+
 def plan_node(state: ResearchState) -> dict:
     """Decompose the user's question into concrete searchable sub-questions."""
     llm = get_llm().with_structured_output(Plan)
@@ -55,7 +91,9 @@ def plan_node(state: ResearchState) -> dict:
                 "specific, self-contained web search queries that together would "
                 "answer it. Do not answer the question yourself."
             ),
-            HumanMessage(state["question"]),
+            HumanMessage(
+                state["question"] + _recalled_context(state.get("recalled") or [])
+            ),
         ]
     )
     return {
@@ -194,6 +232,23 @@ def finalize_node(state: ResearchState) -> dict:
         ]
     )
     return {"final_report": response.text}
+
+
+def remember_node(state: ResearchState, *, store: Optional[BaseStore]) -> dict:
+    """Save the finished report so future runs can recall it.
+
+    As with `recall_node`, `store` must not have a default - see the note
+    there.
+    """
+    remember(
+        store,
+        # Key on the question, so re-researching it updates the memory
+        # instead of piling up near-duplicate entries.
+        key=hashlib.sha256(state["question"].strip().lower().encode()).hexdigest()[:32],
+        question=state["question"],
+        report=state.get("final_report", ""),
+    )
+    return {}
 
 
 # --------------------------------------------------------------------------
