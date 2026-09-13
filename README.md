@@ -13,21 +13,25 @@ LangGraph capability that a plain LLM call cannot do.
 ```mermaid
 graph TD;
 	__start__([__start__]):::first
+	recall(recall)
 	plan(plan)
 	research(research)
 	synthesize(synthesize)
 	critique(critique)
 	human_review(human_review)
 	finalize(finalize)
+	remember(remember)
 	__end__([__end__]):::last
-	__start__ --> plan;
+	__start__ --> recall;
+	recall --> plan;
 	critique -.-> human_review;
 	critique -.-> research;
 	human_review --> finalize;
 	plan --> research;
 	research --> synthesize;
 	synthesize --> critique;
-	finalize --> __end__;
+	finalize --> remember;
+	remember --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
@@ -48,6 +52,7 @@ researches again. Otherwise it goes to human review.
 | Loop guard | `max_revisions` | Stops a picky critic from burning your API budget forever |
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
+| Long-term memory | `memory.py` | Finished reports are stored and semantically recalled by later runs |
 | Observability | `tracing.py` | Every run named and tagged, with `thread_id` in metadata |
 | Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |
 
@@ -100,6 +105,43 @@ costs 3–5 calls. Quota is tracked per model, so switching `GEMINI_MODEL` in
 
 To use OpenAI instead, set `LLM_PROVIDER=openai` and supply `OPENAI_API_KEY`.
 Note the OpenAI API is billed separately from ChatGPT Plus.
+
+## Two kinds of memory
+
+The roadmap PDF draws a distinction that is easy to miss, and this project
+implements both halves:
+
+| | What it answers | Scope | Where |
+|---|---|---|---|
+| **Checkpointer** | "Where was I in *this* run?" | One thread | `SqliteSaver`, `checkpoints.db` |
+| **Store** | "Have I researched this *before*?" | Every run ever | `SqliteStore`, `memory.db` |
+
+The checkpointer is what lets you Ctrl+C and resume. The store is what lets a
+question you ask next week benefit from research done today.
+
+After a report is approved, `remember_node` saves it. At the start of every
+run, `recall_node` semantically searches those saved reports and puts anything
+relevant into the state, which steers the planner away from re-researching
+what is already known.
+
+**Recalled reports are not cited as sources.** They inform planning only. The
+alternative — feeding old reports in as citable material — would blur where a
+claim actually came from, and the whole point of the synthesize prompt is that
+every claim traces to a source fetched in *this* run.
+
+### The relevance floor
+
+Cosine similarity runs high even for unrelated text. Measured with
+`gemini-embedding-001`:
+
+```
+"explain reducers in langgraph"  vs  "what is a langgraph reducer"   0.874
+"explain reducers in langgraph"  vs  "how to bake sourdough bread"   0.697
+```
+
+Without a floor, sourdough counts as relevant to everything. `MEMORY_MIN_RELEVANCE`
+defaults to `0.80`. Set `MEMORY_ENABLED=false` to switch memory off entirely;
+the agent then simply starts cold every time.
 
 ## Tracing (optional)
 
@@ -205,7 +247,7 @@ tests/          # runs without API keys
 - [x] Streamlit front end
 - [x] LangSmith tracing
 - [ ] Postgres checkpointer for multi-user deployment
-- [ ] Vector store for long-term memory across sessions
+- [x] Long-term memory across sessions
 
 ## A note on the LangGraph API
 

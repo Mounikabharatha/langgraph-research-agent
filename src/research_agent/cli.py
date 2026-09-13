@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from .graph import DEFAULT_DB, compiled_graph, draw_mermaid
+from .memory import status as memory_status
 from .tracing import graph_config, status as tracing_status
 
 RULE = "=" * 70
@@ -46,7 +47,8 @@ def main(argv: list[str] | None = None) -> int:
 
     with compiled_graph(args.db) as app:
         print(f"thread_id: {thread_id}")
-        print(f"{tracing_status()}\n")
+        print(f"{tracing_status()}")
+        print(f"{memory_status()}\n")
 
         state = app.get_state(config)
         paused = bool(state.next)

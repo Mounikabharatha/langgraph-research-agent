@@ -259,6 +259,66 @@ three weeks later while debugging something else.
 
 ---
 
+## Test 10 - Long-term memory
+
+This one needs three runs, so budget ~10 Gemini calls plus embeddings.
+
+Start clean:
+
+```bash
+rm -f memory.db
+```
+
+**Run 1** — nothing remembered yet:
+
+```bash
+.venv/bin/python -m research_agent.cli "What is a LangGraph reducer?"
+```
+
+Expect `[recall] recalled=0 items` at the top, and `[remember]` at the end.
+Confirm it saved:
+
+```bash
+.venv/bin/python -c "import sqlite3;print(sqlite3.connect('memory.db').execute('select count(*) from store').fetchone())"
+```
+
+**Run 2** — a *related* question:
+
+```bash
+.venv/bin/python -m research_agent.cli "How do reducers merge state updates in LangGraph?"
+```
+
+Expect **`[recall] recalled=1 items`**. Different wording, same topic - that is
+semantic search, not keyword matching.
+
+**Run 3** — an *unrelated* question:
+
+```bash
+.venv/bin/python -m research_agent.cli "What is the best way to bake sourdough bread?"
+```
+
+Expect **`[recall] recalled=0 items`**.
+
+Run 3 is the one that actually proves something. Sourdough scores about 0.697
+against the stored LangGraph question - high enough that without the 0.80
+relevance floor it would be "recalled" as relevant. If run 3 recalls anything,
+the floor is broken.
+
+**Who did the work:** **Gemini embeddings** (`gemini-embedding-001`, 3072
+dimensions) turned the question into a vector; **SQLite** compared it against
+stored vectors. Neither the chat model nor Tavily is involved in recall.
+
+### Switching it off
+
+```bash
+MEMORY_ENABLED=false .venv/bin/python -m research_agent.cli "anything"
+```
+
+Expect `long-term memory OFF` in the header and `recalled=0`. The run should
+work normally - memory going away degrades the agent, it does not stop it.
+
+---
+
 ## Done
 
 If 1-8 behave as described, the system is working end to end and it is time to

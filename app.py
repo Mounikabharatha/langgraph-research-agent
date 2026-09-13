@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph
+from research_agent.memory import status as memory_status
 from research_agent.tracing import graph_config, status as tracing_status
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
@@ -139,6 +140,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(tracing_status())
+    st.caption(memory_status())
     st.caption(
         "Gemini's free tier allows ~20 requests per day **per model**. "
         "One run costs 3–5. Change `GEMINI_MODEL` in `.env` for a fresh "
@@ -189,6 +191,16 @@ if st.session_state.thread_id:
     a.metric("Sub-questions", len(values.get("plan", [])))
     b.metric("Sources found", len(values.get("findings", [])))
     c.metric("Critic passes", values.get("revision", 0))
+
+    if values.get("recalled"):
+        with st.expander(f"♻️ Recalled from earlier research ({len(values['recalled'])})"):
+            st.caption(
+                "Past reports that scored above the relevance floor. These "
+                "steer the planner away from re-researching what is already "
+                "known; they are not cited as sources."
+            )
+            for m in values["recalled"]:
+                st.markdown(f"**{m['question']}**  ·  similarity {m['score']}")
 
     if values.get("plan"):
         with st.expander("What it searched for"):
