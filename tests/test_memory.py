@@ -224,3 +224,22 @@ def test_graph_still_runs_with_no_store_at_all():
     """Memory off must degrade, not crash."""
     app = _one_node_graph(nodes.recall_node).compile()
     assert app.invoke({"question": "q"})["recalled"] == []
+
+
+# --------------------------------------------------------------------------
+# describe() - a carried parent has no score, and reading one crashed the UI
+# --------------------------------------------------------------------------
+def test_describe_a_carried_parent_without_a_score():
+    """The follow-up parent is handed over deliberately, so it has no
+    similarity score. Reading m["score"] raised KeyError and took the whole
+    page down with a traceback."""
+    label = memory.describe({"question": "q", "report": "r", "carried": True})
+    assert "carried over" in label
+
+
+def test_describe_a_searched_memory_shows_its_score():
+    assert memory.describe({"question": "q", "report": "r", "score": 0.87}) == "similarity 0.87"
+
+
+def test_describe_survives_a_memory_with_neither():
+    assert memory.describe({"question": "q"}) == "recalled"

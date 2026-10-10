@@ -144,6 +144,18 @@ def memory_key(question: str) -> str:
     return hashlib.sha256(question.strip().lower().encode()).hexdigest()[:32]
 
 
+def describe(memory: "Memory | dict") -> str:
+    """Human label for one recalled memory.
+
+    A carried-over parent has no similarity score - it was handed over on
+    purpose, not found by search - so reading `score` directly crashes.
+    """
+    if memory.get("carried"):
+        return "carried over from the question you followed up on"
+    score = memory.get("score")
+    return f"similarity {score}" if score is not None else "recalled"
+
+
 def status() -> str:
     if not memory_enabled():
         return "long-term memory OFF (set MEMORY_ENABLED=true and GOOGLE_API_KEY)"

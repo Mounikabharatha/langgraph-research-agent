@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph
-from research_agent.memory import forget, open_store, status as memory_status
+from research_agent.memory import describe, forget, open_store, status as memory_status
 from research_agent.tracing import graph_config, status as tracing_status
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
@@ -223,12 +223,11 @@ if st.session_state.thread_id:
     if values.get("recalled"):
         with st.expander(f"♻️ Recalled from earlier research ({len(values['recalled'])})"):
             st.caption(
-                "Past reports that scored above the relevance floor. These "
-                "steer the planner away from re-researching what is already "
-                "known; they are not cited as sources."
+                "Earlier reports given to the planner so it does not redo work "
+                "you already have. They are not cited as sources."
             )
             for m in values["recalled"]:
-                st.markdown(f"**{m['question']}**  ·  similarity {m['score']}")
+                st.markdown(f"**{m.get('question', '?')}**  ·  {describe(m)}")
 
     if values.get("plan"):
         with st.expander("What it searched for"):
@@ -299,6 +298,16 @@ if st.session_state.thread_id:
     elif report:
         st.subheader("Final report")
         st.markdown(report)
+
+        # A revision replaces the draft on screen, but the original is still
+        # in the checkpoint - show it rather than appearing to lose it.
+        if draft and draft.strip() != report.strip():
+            with st.expander("📄 The original draft, before your changes"):
+                st.caption(
+                    "Your revision notes rewrote the report. This is what it "
+                    "said beforehand - nothing was lost."
+                )
+                st.markdown(draft)
         st.download_button(
             "Download as Markdown",
             report,
