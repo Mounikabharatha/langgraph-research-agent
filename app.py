@@ -186,14 +186,21 @@ def start(
             status.update(label="Stopped", state="error")
 
 
-def delete_run(thread_id: str, question: str, also_forget: bool) -> None:
-    """Remove a saved run, and optionally the memory it left behind."""
+def delete_runs(runs: list[tuple[str, str]], also_forget: bool) -> None:
+    """Remove saved runs, and optionally the memories they left behind.
+
+    `runs` is [(thread_id, question)]. Deleting a parent takes its whole
+    follow-up chain with it, so this handles several at once.
+    """
     with compiled_graph(DEFAULT_DB) as app:
-        app.checkpointer.delete_thread(thread_id)
+        for thread_id, _ in runs:
+            app.checkpointer.delete_thread(thread_id)
     if also_forget:
         with open_store() as store:
-            forget(store, question)
-    st.session_state.thread_id = None
+            for _, question in runs:
+                forget(store, question)
+    if st.session_state.thread_id in {tid for tid, _ in runs}:
+        st.session_state.thread_id = None
 
 
 def resume(feedback: str) -> None:
@@ -219,8 +226,10 @@ with st.sidebar:
         st.session_state.pop("question_box", None)
         st.rerun()
 
-    st.subheader("Saved runs")
     threads = list_threads()
+    head, mode = st.columns([3, 2])
+    head.subheader("Saved runs")
+    delete_mode = mode.toggle("🗑 Delete", help="Show a bin beside each run")
     if not threads:
         st.caption("Nothing yet — ask something.")
 
@@ -234,6 +243,13 @@ with st.sidebar:
         else:
             roots.append(item)
 
+    def subtree(item: dict) -> list[dict]:
+        """This run plus every follow-up beneath it, at any depth."""
+        out = [item]
+        for child in children.get(item["id"], []):
+            out.extend(subtree(child))
+        return out
+
     def icon(item: dict) -> str:
         if item["next"] is None:
             return "✓"
@@ -243,12 +259,43 @@ with st.sidebar:
         # Streamlit buttons cannot be indented with CSS here, so use
         # figure-spaces to make the depth of a follow-up chain visible.
         prefix = ("\u2007" * 2 * depth + "↳ ") if depth else ""
-        width = max(16, 30 - 2 * depth)
+        width = max(14, 28 - 2 * depth)
         label = f"{icon(item)} {prefix}{item['question'][:width]}"
-        if st.button(label, key=f"t_{item['id']}", use_container_width=True):
-            st.session_state.thread_id = item["id"]
-            st.session_state.error = None
-            st.rerun()
+
+        if delete_mode:
+            open_col, bin_col = st.columns([5, 1])
+            if open_col.button(label, key=f"t_{item['id']}", use_container_width=True):
+                st.session_state.thread_id = item["id"]
+                st.session_state.error = None
+                st.rerun()
+            if bin_col.button("🗑", key=f"d_{item['id']}", help="Delete this run"):
+                st.session_state.pending_delete = item["id"]
+                st.rerun()
+        else:
+            if st.button(label, key=f"t_{item['id']}", use_container_width=True):
+                st.session_state.thread_id = item["id"]
+                st.session_state.error = None
+                st.rerun()
+
+        if st.session_state.get("pending_delete") == item["id"]:
+            doomed = subtree(item)
+            extra = len(doomed) - 1
+            st.warning(
+                f"Delete this run{f' and its {extra} follow-up' if extra else ''}"
+                f"{'s' if extra > 1 else ''}? This cannot be undone."
+            )
+            also_forget = st.checkbox(
+                "Also forget from long-term memory", key=f"f_{item['id']}"
+            )
+            yes, no = st.columns(2)
+            if yes.button("Delete", key=f"y_{item['id']}", use_container_width=True):
+                delete_runs([(d["id"], d["question"]) for d in doomed], also_forget)
+                st.session_state.pending_delete = None
+                st.rerun()
+            if no.button("Cancel", key=f"n_{item['id']}", use_container_width=True):
+                st.session_state.pending_delete = None
+                st.rerun()
+
         for child in children.get(item["id"], []):
             entry(child, depth + 1)
 
@@ -463,13 +510,25 @@ if st.session_state.thread_id:
     # ---- Delete ----
     st.divider()
     with st.expander("🗑️ Delete this run"):
+        followups = [
+            item for item in list_threads()
+            if item["parent"] == st.session_state.thread_id
+        ]
         st.caption(
             "Removes the run and its checkpoints. Cannot be undone. The report "
             "it saved to long-term memory is separate — tick below to drop that too."
         )
+        if followups:
+            st.caption(
+                f"This question has **{len(followups)} follow-up"
+                f"{'s' if len(followups) > 1 else ''}**. Use the 🗑 Delete toggle "
+                "in the sidebar to remove the whole chain at once."
+            )
         also_forget = st.checkbox("Also forget it from long-term memory")
         if st.button("Delete permanently", type="secondary"):
-            delete_run(st.session_state.thread_id, values.get("question", ""), also_forget)
+            delete_runs(
+                [(st.session_state.thread_id, values.get("question", ""))], also_forget
+            )
             st.rerun()
 
     st.caption(f"thread `{st.session_state.thread_id}`")
