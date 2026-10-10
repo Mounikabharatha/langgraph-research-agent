@@ -156,6 +156,56 @@ def render_conversation(values: dict, timeline: list[dict]) -> None:
                     st.markdown(entry["text"])
 
 
+def render_followup_box(values: dict, report: str, approve_first: bool) -> None:
+    """The 'ask something new' box.
+
+    Offered both after approval and at the review gate. At the gate the
+    current question is approved first, so a follow-up never leaves an
+    unapproved run dangling behind it.
+    """
+    st.caption(
+        "Opens a **new** question nested under this one, carrying this answer "
+        "along — so you can say \"it\" without repeating yourself. Unlike a "
+        "revision, a follow-up searches the web again."
+    )
+    thread_id = st.session_state.thread_id
+    follow_up = st.text_input(
+        "Follow-up",
+        placeholder="What does it cost? What is a hybrid, exactly?",
+        label_visibility="collapsed",
+        key=f"fu_{thread_id}",
+    )
+    pick, go = st.columns([2, 1])
+    length = pick.radio(
+        "Answer length", ["auto", "brief", "detailed"],
+        horizontal=True, label_visibility="collapsed",
+        index=["auto", "brief", "detailed"].index(st.session_state.length),
+        key=f"fulen_{thread_id}",
+    )
+    label = "✅  Approve & research" if approve_first else "🔎  Research"
+    if go.button(label, use_container_width=True, type="primary", key=f"fugo_{thread_id}"):
+        if not follow_up.strip():
+            st.warning("Type a follow-up question first.")
+            return
+        st.session_state.length = length
+        parent_report = report
+        if approve_first:
+            resume("approve")
+            parent_report = read_state(thread_id).values.get("final_report", report)
+        start(
+            follow_up.strip(),
+            st.session_state.max_revisions,
+            length=length,
+            parent_thread=thread_id,
+            parent={
+                "question": values.get("question", ""),
+                "report": parent_report,
+                "carried": True,
+            },
+        )
+        st.rerun()
+
+
 # --------------------------------------------------------------------------
 # Session state
 # --------------------------------------------------------------------------
@@ -447,46 +497,55 @@ else:
 
         st.divider()
         st.markdown("#### Your turn")
-        st.caption(
-            f"You have asked for {edits} change{'s' if edits > 1 else ''}. "
-            "Keep going, or approve when you are happy — there is no limit."
-            if edits else
-            "Approve it as it stands, or say what to change. A revision "
-            "rewrites the text; it does not search for anything new."
+
+        revise_tab, new_tab = st.tabs(
+            ["✏️  Change this answer", "🔎  Ask something new"]
         )
-        notes = st.text_area(
-            "What should change?",
-            placeholder="Make it shorter. Drop the last section. Add trade-offs.",
-            height=80,
-            # Key on the edit count so the box empties after each round
-            # instead of re-submitting the previous instruction.
-            key=f"notes_{st.session_state.thread_id}_{edits}",
-            label_visibility="collapsed",
-        )
-        if looks_like_a_question(notes):
-            st.info(
-                "That reads like a **new question**. A revision can only "
-                "reshape the text above — it cannot look anything up. "
-                "Approve this answer first, then use **Ask a follow-up** to "
-                "research it properly."
+
+        with revise_tab:
+            st.caption(
+                f"You have asked for {edits} change{'s' if edits > 1 else ''}. "
+                "Keep going, or approve when you are happy — there is no limit."
+                if edits else
+                "Rewrites the text above using the sources already gathered. "
+                "It cannot look anything up — for that, use the other tab."
+            )
+            notes = st.text_area(
+                "What should change?",
+                placeholder="Make it shorter. Drop the last section. Put it in a table.",
+                height=80,
+                # Key on the edit count so the box empties after each round
+                # instead of re-submitting the previous instruction.
+                key=f"notes_{st.session_state.thread_id}_{edits}",
+                label_visibility="collapsed",
             )
 
-        ok, redo = st.columns(2)
-        if ok.button("✅  Approve", type="primary", use_container_width=True):
-            if notes.strip():
-                st.warning(
-                    "You have written revision notes. Press **Request changes** "
-                    "to apply them, or clear the box to approve as-is."
+            if looks_like_a_question(notes):
+                st.info(
+                    "That reads like a **new question**. A revision can only "
+                    "reshape the text above. Use the **Ask something new** tab "
+                    "to research it properly."
                 )
-            else:
-                resume("approve")
-                st.rerun()
-        if redo.button("✏️  Request changes", use_container_width=True):
-            if notes.strip():
-                resume(notes.strip())
-                st.rerun()
-            else:
-                st.warning("Write what you want changed, or press Approve.")
+
+            ok, redo = st.columns(2)
+            if ok.button("✅  Approve", type="primary", use_container_width=True):
+                if notes.strip():
+                    st.warning(
+                        "You have written revision notes. Press **Request "
+                        "changes** to apply them, or clear the box to approve."
+                    )
+                else:
+                    resume("approve")
+                    st.rerun()
+            if redo.button("✏️  Request changes", use_container_width=True):
+                if notes.strip():
+                    resume(notes.strip())
+                    st.rerun()
+                else:
+                    st.warning("Write what you want changed, or press Approve.")
+
+        with new_tab:
+            render_followup_box(values, values.get("draft", ""), approve_first=True)
 
     elif report:
         st.success("Approved — this question is closed and saved to memory.")
@@ -500,41 +559,7 @@ else:
 
         st.divider()
         st.markdown("#### Ask a follow-up")
-        st.caption(
-            "Opens a **new** question nested under this one, carrying this "
-            "report along — so you can say \"it\" without repeating yourself. "
-            "Unlike a revision, a follow-up searches the web again."
-        )
-        follow_up = st.text_input(
-            "Follow-up",
-            placeholder="What does it cost? How does it compare?",
-            label_visibility="collapsed",
-            key=f"fu_{st.session_state.thread_id}",
-        )
-        fu_len, fu_go = st.columns([2, 1])
-        length = fu_len.radio(
-            "Answer length", ["auto", "brief", "detailed"],
-            horizontal=True, label_visibility="collapsed",
-            index=["auto", "brief", "detailed"].index(st.session_state.length),
-            key=f"fulen_{st.session_state.thread_id}",
-        )
-        if fu_go.button("🔎  Research", use_container_width=True, type="primary"):
-            if follow_up.strip():
-                st.session_state.length = length
-                start(
-                    follow_up.strip(),
-                    st.session_state.max_revisions,
-                    length=length,
-                    parent_thread=st.session_state.thread_id,
-                    parent={
-                        "question": values.get("question", ""),
-                        "report": report,
-                        "carried": True,
-                    },
-                )
-                st.rerun()
-            else:
-                st.warning("Type a follow-up question first.")
+        render_followup_box(values, report, approve_first=False)
 
     # ---- how it got there ----
     st.divider()
