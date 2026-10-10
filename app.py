@@ -17,8 +17,8 @@ from dotenv import load_dotenv
 from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph, report_timeline
-from research_agent.memory import describe, forget, open_store, status as memory_status
-from research_agent.tracing import graph_config, status as tracing_status
+from research_agent.memory import describe, forget, open_store
+from research_agent.tracing import graph_config
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
 load_dotenv()
@@ -229,11 +229,7 @@ with st.sidebar:
 
     threads = list_threads()
     st.subheader("Saved runs")
-    delete_mode = st.toggle(
-        "🗑  Delete mode",
-        help="Shows a bin beside each run. Deleting a question also removes "
-             "the follow-ups nested under it.",
-    )
+    delete_mode = st.toggle("🗑  Delete")
     if not threads:
         st.caption("Nothing yet — ask something.")
 
@@ -306,15 +302,6 @@ with st.sidebar:
     for root in reversed(roots):
         entry(root)
 
-    st.divider()
-    with st.expander("⚙️  Status"):
-        st.caption(tracing_status())
-        st.caption(memory_status())
-        st.caption(
-            "Gemini's free tier allows ~20 requests per day **per model**. "
-            "One run costs 3–5. Change `GEMINI_MODEL` in `.env` for a fresh "
-            "allowance."
-        )
 
 
 # --------------------------------------------------------------------------
