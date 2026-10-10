@@ -27,10 +27,10 @@ graph TD;
 	critique -.-> human_review;
 	critique -.-> research;
 	human_review --> finalize;
+	finalize -.-> human_review;
 	plan --> research;
 	research --> synthesize;
 	synthesize --> critique;
-	finalize --> remember;
 	remember --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
@@ -52,6 +52,7 @@ researches again. Otherwise it goes to human review.
 | Loop guard | `max_revisions` | Stops a picky critic from burning your API budget forever |
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
+| Unlimited revision | `route_after_finalize` | Each rewrite returns to the gate; only approval ends the run |
 | Long-term memory | `memory.py` | Finished reports are stored and semantically recalled by later runs |
 | Observability | `tracing.py` | Every run named and tagged, with `thread_id` in metadata |
 | Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |

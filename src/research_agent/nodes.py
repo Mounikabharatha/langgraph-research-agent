@@ -26,6 +26,9 @@ from .tools import search
 
 DEFAULT_MAX_REVISIONS = 2
 
+# What counts as "I'm happy with this" at the review gate.
+APPROVALS = {"", "approve", "approved", "ok", "yes", "looks good", "lgtm"}
+
 # How much of a carried-over report to show the planner. Enough to resolve
 # "it" / "that one", short enough not to crowd out the new question.
 PARENT_EXCERPT_CHARS = 700
@@ -245,11 +248,15 @@ def human_review_node(state: ResearchState) -> dict:
 
 
 def finalize_node(state: ResearchState) -> dict:
-    """Apply the human's notes, if any, and emit the final report."""
+    """Apply the human's notes, if any, and emit the report.
+
+    A rewrite goes back to the review gate so the human can look at it and
+    either accept it or ask for more. Only an approval ends the run.
+    """
     feedback = (state.get("human_feedback") or "").strip()
 
-    if feedback.lower() in {"", "approve", "approved", "ok", "yes"}:
-        return {"final_report": state["draft"]}
+    if feedback.lower() in APPROVALS:
+        return {"final_report": state["draft"], "approved": True}
 
     llm = get_llm(temperature=0.2)
     response = llm.invoke(
@@ -261,7 +268,15 @@ def finalize_node(state: ResearchState) -> dict:
             HumanMessage(f"Draft:\n{state['draft']}\n\nReviewer notes:\n{feedback}"),
         ]
     )
-    return {"final_report": response.text}
+    rewritten = response.text
+    # Write the rewrite into `draft` too, so the review gate shows the NEW
+    # text rather than the version the reviewer just asked to change.
+    return {
+        "draft": rewritten,
+        "final_report": rewritten,
+        "approved": False,
+        "edits": state.get("edits", 0) + 1,
+    }
 
 
 def remember_node(state: ResearchState, *, store: Optional[BaseStore]) -> dict:
@@ -300,3 +315,13 @@ def route_after_critique(state: ResearchState) -> str:
     if gaps and revision < max_revisions:
         return "research"
     return "human_review"
+
+
+def route_after_finalize(state: ResearchState) -> str:
+    """Approved -> save and finish. Revised -> back to the reviewer.
+
+    Unlike the critic loop above this one needs no step limit. Every pass
+    requires a human to type something and press a button, so it cannot run
+    away on its own; the person doing the reviewing is the guard.
+    """
+    return "remember" if state.get("approved") else "human_review"

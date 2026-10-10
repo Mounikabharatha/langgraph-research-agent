@@ -58,6 +58,8 @@ class ResearchState(TypedDict, total=False):
 
     # --- human-in-the-loop ---
     human_feedback: str
+    approved: bool
+    edits: int
 
     # --- output ---
     final_report: str

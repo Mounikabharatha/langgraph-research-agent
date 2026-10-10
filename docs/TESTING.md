@@ -383,6 +383,35 @@ Check with:
 
 ---
 
+## Test 13 - Revise as many times as you like
+
+At the review gate, type notes and press **✏️ Request changes**. When the
+rewrite appears, do it again. And again.
+
+**Expect** the heading to count up — *Draft for review*, then *Rewrite 1 for
+review*, *Rewrite 2 for review* — and the notes box to be empty each time.
+Press **✅ Approve** whenever you are happy; only that ends the run.
+
+From the CLI the same thing works:
+
+```bash
+printf 'make it shorter\nadd a summary line\napprove\n' | \
+  .venv/bin/python -m research_agent.cli "What is the Mediterranean diet?"
+```
+
+**Who did the work:** **Gemini**, once per rewrite. **No new searching** - a
+revision reshapes what was already gathered. For new information, ask a
+follow-up instead.
+
+### Why this loop needs no step limit
+
+The critic's loop is capped by `max_revisions` because it runs unattended and
+would otherwise burn an API budget on its own. This loop is different: every
+pass waits for a human to type something, so it cannot run away. The person
+reviewing is the guard.
+
+---
+
 ## A trap when editing code
 
 Streamlit does not always reload on its own. If you edit a file and the app

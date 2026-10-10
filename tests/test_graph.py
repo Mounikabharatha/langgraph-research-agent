@@ -127,3 +127,53 @@ def test_search_raises_instead_of_silently_returning_nothing(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Tavily search failed"):
         tools.search("anything")
+
+
+# --------------------------------------------------------------------------
+# The review gate loops until the human approves
+# --------------------------------------------------------------------------
+def test_approval_ends_the_run():
+    from research_agent.nodes import route_after_finalize
+
+    assert route_after_finalize({"approved": True}) == "remember"
+
+
+def test_a_rewrite_goes_back_to_the_reviewer():
+    """Previously 'Request changes' worked exactly once and the run ended.
+    A rewrite now returns to the gate so it can be reviewed in turn."""
+    from research_agent.nodes import route_after_finalize
+
+    assert route_after_finalize({"approved": False}) == "human_review"
+
+
+def test_an_unset_approval_is_not_treated_as_approved():
+    from research_agent.nodes import route_after_finalize
+
+    assert route_after_finalize({}) == "human_review"
+
+
+@pytest.mark.parametrize("word", ["approve", "Approved", "  OK  ", "yes", ""])
+def test_finalize_recognises_approval_and_makes_no_llm_call(word):
+    result = nodes.finalize_node({"draft": "the answer", "human_feedback": word})
+    assert result["final_report"] == "the answer"
+    assert result["approved"] is True
+
+
+def test_finalize_rewrite_updates_the_draft_too(monkeypatch):
+    """The gate shows `draft`, so a rewrite must land there as well - otherwise
+    the reviewer is shown the version they just asked to change."""
+
+    class FakeLLM:
+        def invoke(self, _messages):
+            return type("R", (), {"text": "the shorter answer"})()
+
+    monkeypatch.setattr(nodes, "get_llm", lambda *a, **k: FakeLLM())
+
+    result = nodes.finalize_node(
+        {"draft": "the long answer", "human_feedback": "make it shorter", "edits": 0}
+    )
+
+    assert result["draft"] == "the shorter answer"
+    assert result["final_report"] == "the shorter answer"
+    assert result["approved"] is False
+    assert result["edits"] == 1

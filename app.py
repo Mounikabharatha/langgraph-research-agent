@@ -265,8 +265,14 @@ if st.session_state.thread_id:
         )
 
     elif stopped_at == REVIEW_GATE:
-        st.subheader("Draft for review")
-        if values.get("critique"):
+        edits = values.get("edits", 0)
+        st.subheader("Draft for review" if not edits else f"Rewrite {edits} for review")
+        if edits:
+            st.caption(
+                f"You have asked for {edits} change{'s' if edits > 1 else ''}. "
+                "Keep going, or approve when you are happy — there is no limit."
+            )
+        elif values.get("critique"):
             st.info(f"**Critic:** {values['critique']}")
         st.markdown(draft or "")
 
@@ -275,6 +281,9 @@ if st.session_state.thread_id:
             "Revision notes — how should the draft above be rewritten?",
             placeholder="Make it shorter. Drop the last section. Add trade-offs.",
             height=80,
+            # Key on the edit count so the box empties after each round
+            # instead of re-submitting the previous instruction.
+            key=f"notes_{st.session_state.thread_id}_{values.get('edits', 0)}",
             help=(
                 "This rewrites the draft using the sources already gathered. "
                 "It cannot look anything new up — for that, ask a new question."

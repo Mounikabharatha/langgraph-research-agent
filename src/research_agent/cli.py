@@ -70,12 +70,17 @@ def main(argv: list[str] | None = None) -> int:
             _stream(app, {"question": args.question, "max_revisions": args.max_revisions}, config)
             state = app.get_state(config)
 
-        # Stopped at the human review gate.
-        if state.next:
-            print(f"\n{RULE}\nDRAFT FOR REVIEW\n{RULE}")
+        # The review gate loops: a rewrite comes back here so it can be
+        # reviewed in turn. Only an approval leaves the loop.
+        while state.next:
+            edits = state.values.get("edits", 0)
+            heading = "DRAFT FOR REVIEW" if not edits else f"REWRITE {edits} FOR REVIEW"
+            print(f"\n{RULE}\n{heading}\n{RULE}")
             print(state.values.get("draft", ""))
             print(RULE)
-            print(f"Critic said: {state.values.get('critique', '-')}\n")
+            if not edits:
+                print(f"Critic said: {state.values.get('critique', '-')}")
+            print()
 
             try:
                 feedback = input("Type 'approve', or your revision notes: ").strip()
@@ -90,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 130
 
             _stream(app, Command(resume=feedback), config)
+            state = app.get_state(config)
 
         final = app.get_state(config).values.get("final_report", "")
         print(f"\n{RULE}\nFINAL REPORT\n{RULE}")

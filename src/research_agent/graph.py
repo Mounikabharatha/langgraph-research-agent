@@ -25,6 +25,7 @@ from .nodes import (
     remember_node,
     research_node,
     route_after_critique,
+    route_after_finalize,
     synthesize_node,
 )
 from .state import ResearchState
@@ -60,7 +61,13 @@ def build_graph() -> StateGraph:
     )
 
     builder.add_edge("human_review", "finalize")
-    builder.add_edge("finalize", "remember")
+
+    # A rewrite returns to the reviewer; only an approval moves on.
+    builder.add_conditional_edges(
+        "finalize",
+        route_after_finalize,
+        path_map={"human_review": "human_review", "remember": "remember"},
+    )
     builder.add_edge("remember", END)
 
     return builder
