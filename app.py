@@ -164,9 +164,9 @@ def render_followup_box(values: dict, report: str, approve_first: bool) -> None:
     unapproved run dangling behind it.
     """
     st.caption(
-        "Opens a **new** question nested under this one, carrying this answer "
-        "along — so you can say \"it\" without repeating yourself. Unlike a "
-        "revision, a follow-up searches the web again."
+        "A **new** question, nested under this one and carrying this answer "
+        "along — so you can say \"it\". Searches the web again."
+        + (" Closes this answer first." if approve_first else "")
     )
     thread_id = st.session_state.thread_id
     follow_up = st.text_input(
@@ -175,15 +175,14 @@ def render_followup_box(values: dict, report: str, approve_first: bool) -> None:
         label_visibility="collapsed",
         key=f"fu_{thread_id}",
     )
-    pick, go = st.columns([2, 1])
-    length = pick.radio(
+    length = st.radio(
         "Answer length", ["auto", "brief", "detailed"],
         horizontal=True, label_visibility="collapsed",
         index=["auto", "brief", "detailed"].index(st.session_state.length),
         key=f"fulen_{thread_id}",
     )
-    label = "✅  Approve & research" if approve_first else "🔎  Research"
-    if go.button(label, use_container_width=True, type="primary", key=f"fugo_{thread_id}"):
+    label = "🔎  Research follow-up"
+    if st.button(label, use_container_width=True, key=f"fugo_{thread_id}"):
         if not follow_up.strip():
             st.warning("Type a follow-up question first.")
             return
@@ -497,55 +496,60 @@ else:
 
         st.divider()
         st.markdown("#### Your turn")
-
-        revise_tab, new_tab = st.tabs(
-            ["✏️  Change this answer", "🔎  Ask something new"]
-        )
-
-        with revise_tab:
+        if edits:
             st.caption(
                 f"You have asked for {edits} change{'s' if edits > 1 else ''}. "
-                "Keep going, or approve when you are happy — there is no limit."
-                if edits else
-                "Rewrites the text above using the sources already gathered. "
-                "It cannot look anything up — for that, use the other tab."
+                "Keep going, approve when you are happy, or ask something new."
+            )
+
+        change_col, new_col = st.columns(2)
+
+        with change_col:
+            st.markdown("**✏️ Change this answer**")
+            st.caption(
+                "Rewrites the text above from the sources already gathered. "
+                "It cannot look anything up."
             )
             notes = st.text_area(
                 "What should change?",
                 placeholder="Make it shorter. Drop the last section. Put it in a table.",
-                height=80,
+                height=90,
                 # Key on the edit count so the box empties after each round
                 # instead of re-submitting the previous instruction.
                 key=f"notes_{st.session_state.thread_id}_{edits}",
                 label_visibility="collapsed",
             )
-
-            if looks_like_a_question(notes):
-                st.info(
-                    "That reads like a **new question**. A revision can only "
-                    "reshape the text above. Use the **Ask something new** tab "
-                    "to research it properly."
-                )
-
-            ok, redo = st.columns(2)
-            if ok.button("✅  Approve", type="primary", use_container_width=True):
-                if notes.strip():
-                    st.warning(
-                        "You have written revision notes. Press **Request "
-                        "changes** to apply them, or clear the box to approve."
-                    )
-                else:
-                    resume("approve")
-                    st.rerun()
-            if redo.button("✏️  Request changes", use_container_width=True):
+            if st.button("✏️  Request changes", use_container_width=True):
                 if notes.strip():
                     resume(notes.strip())
                     st.rerun()
                 else:
-                    st.warning("Write what you want changed, or press Approve.")
+                    st.warning("Write what you want changed.")
 
-        with new_tab:
+        with new_col:
+            st.markdown("**🔎 Ask a follow-up**")
             render_followup_box(values, values.get("draft", ""), approve_first=True)
+
+        if looks_like_a_question(notes):
+            st.info(
+                "That reads like a **new question**. A revision only reshapes "
+                "the text above — put it in the follow-up box on the right to "
+                "research it properly."
+            )
+
+        # Approve sits between the two, as the way out of the loop.
+        _, mid, _ = st.columns([1, 2, 1])
+        if mid.button(
+            "✅  Approve & close", type="primary", use_container_width=True
+        ):
+            if notes.strip():
+                st.warning(
+                    "You have written revision notes. Press **Request changes** "
+                    "to apply them, or clear the box to approve."
+                )
+            else:
+                resume("approve")
+                st.rerun()
 
     elif report:
         st.success("Approved — this question is closed and saved to memory.")
