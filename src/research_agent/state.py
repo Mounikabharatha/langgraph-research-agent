@@ -42,6 +42,10 @@ class ResearchState(TypedDict, total=False):
     # --- long-term memory (across runs, not just this thread) ---
     recalled: list[Memory]
 
+    # Thread this run followed up on, so the UI can group a question with
+    # its follow-ups instead of listing them as unrelated runs.
+    parent_thread: str
+
     # --- how much answer the reader wants ---
     length: str  # "auto" | "brief" | "detailed"
 

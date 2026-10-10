@@ -76,8 +76,8 @@ def summarise(update) -> str:
 REVIEW_GATE = "human_review"
 
 
-def list_threads() -> list[tuple[str, str, str | None]]:
-    """Return (thread_id, question, next_node) for every saved thread.
+def list_threads() -> list[dict]:
+    """Every saved thread, with what it followed up on.
 
     `next_node` is None when the run finished. Otherwise it names the node the
     run stopped before - which is only "human_review" for a genuine pause. Any
@@ -97,9 +97,26 @@ def list_threads() -> list[tuple[str, str, str | None]]:
     with compiled_graph(DEFAULT_DB) as app:
         for tid in ids:
             snap = app.get_state(graph_config(tid))
-            out.append(
-                (tid, snap.values.get("question", "?"), snap.next[0] if snap.next else None)
+            carried = next(
+                (m for m in (snap.values.get("recalled") or []) if m.get("carried")),
+                None,
             )
+            out.append({
+                "id": tid,
+                "question": snap.values.get("question", "?"),
+                "next": snap.next[0] if snap.next else None,
+                "parent": snap.values.get("parent_thread"),
+                # Runs made before parent_thread existed still know which
+                # question they followed up on, so fall back to matching that.
+                "parent_question": (carried or {}).get("question"),
+            })
+
+    by_question = {item["question"]: item["id"] for item in out}
+    for item in out:
+        if not item["parent"] and item["parent_question"]:
+            match = by_question.get(item["parent_question"])
+            if match and match != item["id"]:
+                item["parent"] = match
     return out
 
 
@@ -149,6 +166,7 @@ def start(
     max_revisions: int,
     parent: dict | None = None,
     length: str = "auto",
+    parent_thread: str | None = None,
 ) -> None:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.error = None
@@ -157,6 +175,8 @@ def start(
         # Hand the previous report over deliberately. recall_node keeps it and
         # adds anything semantic search finds on top.
         payload["recalled"] = [parent]
+    if parent_thread:
+        payload["parent_thread"] = parent_thread
     with st.status("Researching…", expanded=True) as status:
         try:
             drive(payload, st.session_state.thread_id, status)
@@ -193,22 +213,47 @@ def resume(feedback: str) -> None:
 # by st.rerun() once the run finishes, not by moving this.
 # --------------------------------------------------------------------------
 with st.sidebar:
+    if st.button("➕  New question", use_container_width=True, type="primary"):
+        st.session_state.thread_id = None
+        st.session_state.error = None
+        st.session_state.pop("question_box", None)
+        st.rerun()
+
     st.subheader("Saved runs")
     threads = list_threads()
     if not threads:
-        st.caption("Nothing yet — run something.")
-    for tid, question, next_node in reversed(threads):
-        if next_node is None:
-            icon = "✓ "          # finished
-        elif next_node == REVIEW_GATE:
-            icon = "⏸ "          # genuinely waiting for you
+        st.caption("Nothing yet — ask something.")
+
+    by_id = {t["id"]: t for t in threads}
+    children: dict[str, list[dict]] = {}
+    roots: list[dict] = []
+    for item in threads:
+        # A follow-up whose parent was deleted is shown as a root, not lost.
+        if item["parent"] and item["parent"] in by_id:
+            children.setdefault(item["parent"], []).append(item)
         else:
-            icon = "⚠️ "          # died partway through
-        label = icon + (question[:32] or "?")
-        if st.button(label, key=f"t_{tid}", use_container_width=True):
-            st.session_state.thread_id = tid
+            roots.append(item)
+
+    def icon(item: dict) -> str:
+        if item["next"] is None:
+            return "✓"
+        return "⏸" if item["next"] == REVIEW_GATE else "⚠️"
+
+    def entry(item: dict, depth: int = 0) -> None:
+        # Streamlit buttons cannot be indented with CSS here, so use
+        # figure-spaces to make the depth of a follow-up chain visible.
+        prefix = ("\u2007" * 2 * depth + "↳ ") if depth else ""
+        width = max(16, 30 - 2 * depth)
+        label = f"{icon(item)} {prefix}{item['question'][:width]}"
+        if st.button(label, key=f"t_{item['id']}", use_container_width=True):
+            st.session_state.thread_id = item["id"]
             st.session_state.error = None
             st.rerun()
+        for child in children.get(item["id"], []):
+            entry(child, depth + 1)
+
+    for root in reversed(roots):
+        entry(root)
 
     st.divider()
     st.caption(tracing_status())
@@ -234,6 +279,8 @@ with st.form("ask"):
         "What do you want researched?",
         placeholder="How do LangGraph checkpointers differ from LangChain memory?",
         height=90,
+        # Without a key the box empties on submit and the question vanishes.
+        key="question_box",
     )
     opts, retries = st.columns([3, 1])
     length = opts.radio(
@@ -370,7 +417,10 @@ if st.session_state.thread_id:
 
     elif report:
         render_conversation(values, read_timeline(st.session_state.thread_id))
-        st.success("✅ Approved — this question is finished.")
+        st.success(
+            "✅ Approved — this question is closed. Nothing more will be "
+            "researched for it."
+        )
 
         st.download_button(
             "Download as Markdown",
@@ -381,11 +431,11 @@ if st.session_state.thread_id:
 
         # ---- Ask a follow-up ----
         st.divider()
-        st.markdown("#### Ask a follow-up")
+        st.markdown("#### Start a follow-up question")
         st.caption(
-            "Starts a **new run** with this report handed over as context, so "
-            "you can say \"it\" and \"that laptop\". A follow-up does fresh "
-            "searches — unlike Request changes, which only rewrites a draft."
+            "This closed question stays as it is. A follow-up opens a **new** "
+            "one underneath it in the sidebar, carrying this report along so "
+            "you can say \"it\" without repeating yourself."
         )
         follow_up = st.text_input(
             "Follow-up question",
@@ -399,6 +449,7 @@ if st.session_state.thread_id:
                     follow_up.strip(),
                     int(max_revisions),
                     length=length,
+                    parent_thread=st.session_state.thread_id,
                     parent={
                         "question": values.get("question", ""),
                         "report": report,
