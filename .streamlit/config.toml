@@ -1,0 +1,16 @@
+# Streamlit settings for this app. Committed so the app looks the same
+# for anyone who clones it.
+
+[client]
+# "minimal" hides Streamlit's developer menu - Rerun, Clear cache, Print,
+# Record screen, Deploy. None of them are part of this app, and leaving
+# them there invites a viewer to press something confusing.
+toolbarMode = "minimal"
+showErrorDetails = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#E8503A"
