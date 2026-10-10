@@ -243,3 +243,35 @@ def test_describe_a_searched_memory_shows_its_score():
 
 def test_describe_survives_a_memory_with_neither():
     assert memory.describe({"question": "q"}) == "recalled"
+
+
+# --------------------------------------------------------------------------
+# Re-asking the same question must not steer the planner away from it
+# --------------------------------------------------------------------------
+def test_a_repeat_question_is_answered_not_avoided():
+    """At high similarity the memory IS the same question. Telling the planner
+    to avoid what it already covered would steer the search away from the very
+    thing being asked."""
+    context = nodes._recalled_context(
+        [{"question": "what is the current AQI in Delhi?", "report": "R", "score": 0.97}]
+    )
+    assert "answer it properly and in full" in context
+    assert "CURRENT information" in context
+    assert "would NOT already cover" not in context
+
+
+def test_a_merely_related_question_still_avoids_redundancy():
+    context = nodes._recalled_context(
+        [{"question": "what causes Delhi's pollution?", "report": "R", "score": 0.84}]
+    )
+    assert "would NOT already cover" in context
+    assert "answer it properly and in full" not in context
+
+
+def test_repeats_and_related_memories_can_appear_together():
+    context = nodes._recalled_context([
+        {"question": "same thing", "report": "R", "score": 0.98},
+        {"question": "adjacent thing", "report": "R", "score": 0.83},
+    ])
+    assert "same thing" in context and "adjacent thing" in context
+    assert "answer it properly" in context and "would NOT already cover" in context

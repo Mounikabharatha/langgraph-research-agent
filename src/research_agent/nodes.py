@@ -29,6 +29,13 @@ DEFAULT_MAX_REVISIONS = 2
 # What counts as "I'm happy with this" at the review gate.
 APPROVALS = {"", "approve", "approved", "ok", "yes", "looks good", "lgtm"}
 
+# Above this similarity a recalled memory is effectively the SAME question
+# asked again, not merely a related one. The distinction matters: telling the
+# planner to avoid ground an earlier answer covered is right for a related
+# question and actively wrong for a repeat, where it would steer the search
+# away from the very thing being asked.
+SAME_QUESTION_SIMILARITY = 0.93
+
 # How much of a carried-over report to show the planner. Enough to resolve
 # "it" / "that one", short enough not to crowd out the new question.
 PARENT_EXCERPT_CHARS = 700
@@ -106,15 +113,29 @@ def _recalled_context(recalled: list[Memory]) -> str:
             "search queries. Plan sub-questions that answer the NEW question "
             "specifically, without re-covering ground the earlier answer holds."
         )
-    if similar:
+    repeats = [
+        m for m in similar
+        if (m.get("score") or 0) >= SAME_QUESTION_SIMILARITY
+    ]
+    related = [m for m in similar if m not in repeats]
+
+    if repeats:
+        parts.append(
+            "You have answered essentially this same question before:\n"
+            + "\n".join(f"- {m.get('question', '')}" for m in repeats)
+            + "\nThe reader is asking again, so answer it properly and in full. "
+            "Prefer queries that surface CURRENT information, since the earlier "
+            "answer may be out of date. Do not avoid the topic."
+        )
+    if related:
         parts.append(
             "You have also researched these related questions before:\n"
             + "\n".join(
-                f"- {m.get('question', '')} (similarity {m.get('score')})" for m in similar
+                f"- {m.get('question', '')} (similarity {m.get('score')})" for m in related
             )
             + "\nBias your sub-questions towards what those would NOT already cover."
         )
-    return "\n\n" + "\n\n".join(parts)
+    return "\n\n" + "\n\n".join(parts) if parts else ""
 
 
 def plan_node(state: ResearchState) -> dict:
