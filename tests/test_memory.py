@@ -130,7 +130,8 @@ def test_planner_prompt_treats_a_follow_up_differently():
     context = nodes._recalled_context(
         [{"question": "best gaming laptop", "report": "R", "carried": True}]
     )
-    assert "FOLLOW-UP" in context
+    assert "CONTEXT ONLY" in context
+    assert "Do NOT plan searches about the earlier topic" in context
     assert "best gaming laptop" in context
 
 
@@ -144,7 +145,7 @@ def test_follow_up_context_includes_the_parent_answer():
         "carried": True,
     }])
     assert "Alienware m18 R2" in context
-    assert "Resolve any pronouns" in context
+    assert "substitute the actual name" in context
 
 
 def test_follow_up_context_truncates_a_long_parent_report():

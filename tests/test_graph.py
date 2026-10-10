@@ -208,8 +208,8 @@ def test_a_followup_is_told_not_to_repeat_the_background():
     rule = nodes._followup_rule(
         {"recalled": [{"question": "best gaming laptop", "carried": True}]}
     )
-    assert "FOLLOW-UP" in rule
-    assert "Do NOT restate" in rule
+    assert "ALREADY READ" in rule
+    assert "Answer ONLY the question asked now" in rule
     assert "best gaming laptop" in rule
 
 

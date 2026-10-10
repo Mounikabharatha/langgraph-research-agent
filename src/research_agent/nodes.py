@@ -37,8 +37,9 @@ APPROVALS = {"", "approve", "approved", "ok", "yes", "looks good", "lgtm"}
 SAME_QUESTION_SIMILARITY = 0.93
 
 # How much of a carried-over report to show the planner. Enough to resolve
-# "it" / "that one", short enough not to crowd out the new question.
-PARENT_EXCERPT_CHARS = 700
+# "it" / "that one", and no more: a longer excerpt pulls the plan back
+# towards the earlier topic instead of the question actually being asked.
+PARENT_EXCERPT_CHARS = 400
 
 
 # --------------------------------------------------------------------------
@@ -106,12 +107,13 @@ def _recalled_context(recalled: list[Memory]) -> str:
             for m in parent
         )
         parts.append(
-            "This is a FOLLOW-UP. The question below has already been researched "
-            f"and answered:\n\n{blocks}\n\n"
-            "Resolve any pronouns in the new question against that answer - if it "
-            "names a specific product, person or place, put that name in your "
-            "search queries. Plan sub-questions that answer the NEW question "
-            "specifically, without re-covering ground the earlier answer holds."
+            f"CONTEXT ONLY - an earlier question and answer:\n\n{blocks}\n\n"
+            "Use this for ONE purpose: to work out what the new question "
+            "refers to. If it says \"it\" or \"that one\", substitute the "
+            "actual name into your search queries.\n"
+            "Do NOT plan searches about the earlier topic. The new question "
+            "governs entirely - if it asks for a definition, search for that "
+            "definition and nothing else."
         )
     repeats = [
         m for m in similar
@@ -261,9 +263,12 @@ def _followup_rule(state: ResearchState) -> str:
     if not parent:
         return ""
     return (
-        "\n\nThis is a FOLLOW-UP. The reader has already read an answer to: "
+        "\n\nThe reader has ALREADY READ an answer to: "
         + "; ".join(m.get("question", "") for m in parent)
-        + ". Do NOT restate that background. Answer ONLY the new question."
+        + ".\nAnswer ONLY the question asked now. Do not summarise, compare "
+        "against, or reintroduce that earlier topic. Assume the reader "
+        "remembers it. If the question asks what something means, define that "
+        "one thing and stop."
     )
 
 
