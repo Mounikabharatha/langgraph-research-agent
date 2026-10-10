@@ -319,6 +319,82 @@ work normally - memory going away degrades the agent, it does not stop it.
 
 ---
 
+## Test 11 - Follow-up questions
+
+A follow-up is a **new run** that is handed the previous report as context, so
+pronouns resolve. It is not the same as "Request changes", which only rewrites
+an existing draft and cannot look anything up.
+
+In the web UI:
+
+1. Ask something whose answer names a specific thing, e.g.
+   *"Which laptop is best for gaming?"*
+2. Approve it.
+3. Under the final report, in **Ask a follow-up**, type *"What does it cost?"*
+4. Press **🔎 Research follow-up**.
+
+**Expect** the new run's `[recall]` to report **1 item**, and - the thing that
+actually matters - the planned sub-questions to name the specific product from
+the first answer:
+
+```
+- current market price of Alienware m18 R2 with RTX 4090
+- official Dell store page Alienware m18 R2
+```
+
+If instead you see generic queries like "top gaming laptops 2024", the parent
+report is not reaching the planner.
+
+**Who did the work:** **Gemini**, twice - once to plan with the parent answer
+in view, once to write. **Tavily** ran the new searches. The parent report came
+off disk, not from the model's memory.
+
+### Why the parent ANSWER is passed, not just the parent question
+
+An earlier version passed only the previous *question*. The planner knew the
+topic was gaming laptops but had no idea which one, so it searched generically.
+Passing an excerpt of the previous *answer* (`PARENT_EXCERPT_CHARS` in
+`nodes.py`) is what lets "it" resolve to a product name.
+
+---
+
+## Test 12 - Deleting a run
+
+1. Pick any run in the sidebar.
+2. Open **🗑️ Delete this run** at the bottom.
+3. Leave the checkbox unticked. Press **Delete permanently**.
+
+**Expect** that run to vanish from the sidebar.
+
+Now the subtle half. The run and the *memory it left behind* are two different
+stores: checkpoints live in `checkpoints.db`, remembered reports in
+`memory.db`. Deleting the run alone leaves the memory, so that report can still
+be recalled by a future question. Tick **Also forget it from long-term memory**
+to drop both.
+
+Check with:
+
+```bash
+.venv/bin/python -c "import sqlite3;print('runs:',sqlite3.connect('checkpoints.db').execute('select count(distinct thread_id) from checkpoints').fetchone()[0])"
+.venv/bin/python -c "import sqlite3;print('memories:',sqlite3.connect('memory.db').execute('select count(*) from store').fetchone()[0])"
+```
+
+**Who did the work:** *Neither API.* Both are local SQLite deletes.
+
+---
+
+## A trap when editing code
+
+Streamlit does not always reload on its own. If you edit a file and the app
+seems frozen, look at the **top-right of the page**: if it says
+**"File change — Rerun / Always rerun"**, the app is waiting for you and is
+still running the OLD code. Click **Always rerun** once.
+
+This genuinely wasted debugging time during development - a stale error message
+looked like a live bug.
+
+---
+
 ## Done
 
 If 1-8 behave as described, the system is working end to end and it is time to
