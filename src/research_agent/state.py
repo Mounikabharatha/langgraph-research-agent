@@ -42,6 +42,9 @@ class ResearchState(TypedDict, total=False):
     # --- long-term memory (across runs, not just this thread) ---
     recalled: list[Memory]
 
+    # --- how much answer the reader wants ---
+    length: str  # "auto" | "brief" | "detailed"
+
     # --- planning ---
     plan: list[str]
 

@@ -177,3 +177,45 @@ def test_finalize_rewrite_updates_the_draft_too(monkeypatch):
     assert result["final_report"] == "the shorter answer"
     assert result["approved"] is False
     assert result["edits"] == 1
+
+
+# --------------------------------------------------------------------------
+# Answer length - a one-fact question should not get an essay
+# --------------------------------------------------------------------------
+def test_auto_length_tells_the_writer_to_match_the_question():
+    rule = nodes._length_rule({})
+    assert "MATCH THE LENGTH" in rule
+    assert "1-3 sentences" in rule
+
+
+def test_brief_caps_the_answer():
+    assert "at most 3 sentences" in nodes._length_rule({"length": "brief"})
+
+
+def test_detailed_asks_for_depth():
+    assert "thorough" in nodes._length_rule({"length": "detailed"})
+
+
+def test_an_unknown_length_falls_back_to_auto():
+    assert nodes._length_rule({"length": "nonsense"}) == nodes._length_rule({})
+
+
+def test_a_followup_is_told_not_to_repeat_the_background():
+    """Without this the writer re-explains everything the reader just read."""
+    rule = nodes._followup_rule(
+        {"recalled": [{"question": "best gaming laptop", "carried": True}]}
+    )
+    assert "FOLLOW-UP" in rule
+    assert "Do NOT restate" in rule
+    assert "best gaming laptop" in rule
+
+
+def test_a_first_question_gets_no_followup_rule():
+    assert nodes._followup_rule({}) == ""
+
+
+def test_a_merely_similar_memory_is_not_treated_as_a_followup():
+    """Only a carried parent means 'the reader already read this'. A memory
+    found by similarity does not."""
+    rule = nodes._followup_rule({"recalled": [{"question": "q", "score": 0.9}]})
+    assert rule == ""

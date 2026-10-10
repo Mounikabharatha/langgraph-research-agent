@@ -40,7 +40,10 @@ PARENT_EXCERPT_CHARS = 700
 # --------------------------------------------------------------------------
 class Plan(BaseModel):
     sub_questions: list[str] = Field(
-        description="3 to 5 specific, self-contained search queries",
+        description=(
+            "Search queries. Use as few as the question needs: 1-2 for a "
+            "narrow factual question, 3-5 only for a genuinely broad one."
+        ),
         min_length=1,
         max_length=6,
     )
@@ -120,9 +123,12 @@ def plan_node(state: ResearchState) -> dict:
     plan: Plan = llm.invoke(
         [
             SystemMessage(
-                "You are a research planner. Break the user's question into 3-5 "
-                "specific, self-contained web search queries that together would "
-                "answer it. Do not answer the question yourself."
+                "You are a research planner. Turn the user's question into the "
+                "FEWEST self-contained web search queries that would answer it. "
+                "A narrow factual question ('what does X cost?') needs 1-2. "
+                "Only a genuinely broad question needs 4-5. Over-planning a "
+                "small question wastes searches and produces a bloated answer. "
+                "Do not answer the question yourself."
             ),
             HumanMessage(
                 state["question"] + _recalled_context(state.get("recalled") or [])
@@ -187,16 +193,50 @@ def _format_findings(findings: list[Finding]) -> str:
     )
 
 
+def _length_rule(state: ResearchState) -> str:
+    """How long the answer should be. Without this the writer always writes an
+    essay, even when asked what a chair costs."""
+    choice = (state.get("length") or "auto").strip().lower()
+    if choice == "brief":
+        return (
+            "Answer in at most 3 sentences, or 3 short bullets. No preamble, no "
+            "background, no headings. Lead with the direct answer."
+        )
+    if choice == "detailed":
+        return "Give a thorough answer with headings where they help."
+    return (
+        "MATCH THE LENGTH TO THE QUESTION. A narrow factual question ('what "
+        "does X cost?', 'when did Y happen?') gets a direct answer in 1-3 "
+        "sentences - lead with the fact itself. Only a genuinely broad "
+        "question earns headings and several paragraphs. Never pad an answer "
+        "to look thorough."
+    )
+
+
+def _followup_rule(state: ResearchState) -> str:
+    """Stop the writer re-explaining what the reader already read."""
+    parent = [m for m in (state.get("recalled") or []) if m.get("carried")]
+    if not parent:
+        return ""
+    return (
+        "\n\nThis is a FOLLOW-UP. The reader has already read an answer to: "
+        + "; ".join(m.get("question", "") for m in parent)
+        + ". Do NOT restate that background. Answer ONLY the new question."
+    )
+
+
 def synthesize_node(state: ResearchState) -> dict:
     """Write a cited answer from everything gathered so far."""
     llm = get_llm(temperature=0.2)
     response = llm.invoke(
         [
             SystemMessage(
-                "Write a clear, well-organised answer using ONLY the sources given. "
+                "Write an answer using ONLY the sources given. "
                 "Cite sources inline as [1], [2] matching their numbers. "
                 "If the sources do not support a claim, say so rather than guessing. "
-                "End with a 'Sources' list of the numbered URLs."
+                "End with a 'Sources' list of the numbered URLs.\n\n"
+                + _length_rule(state)
+                + _followup_rule(state)
             ),
             HumanMessage(
                 f"Question: {state['question']}\n\n"

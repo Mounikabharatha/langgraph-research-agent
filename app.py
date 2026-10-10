@@ -144,10 +144,15 @@ st.session_state.setdefault("thread_id", None)
 st.session_state.setdefault("error", None)
 
 
-def start(question: str, max_revisions: int, parent: dict | None = None) -> None:
+def start(
+    question: str,
+    max_revisions: int,
+    parent: dict | None = None,
+    length: str = "auto",
+) -> None:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.error = None
-    payload = {"question": question, "max_revisions": max_revisions}
+    payload = {"question": question, "max_revisions": max_revisions, "length": length}
     if parent:
         # Hand the previous report over deliberately. recall_node keeps it and
         # adds anything semantic search finds on top.
@@ -230,13 +235,23 @@ with st.form("ask"):
         placeholder="How do LangGraph checkpointers differ from LangChain memory?",
         height=90,
     )
-    left, right = st.columns([3, 1])
-    max_revisions = right.number_input("Max retries", 0, 5, 2)
-    submitted = left.form_submit_button("Research", type="primary", use_container_width=True)
+    opts, retries = st.columns([3, 1])
+    length = opts.radio(
+        "Answer length",
+        ["auto", "brief", "detailed"],
+        horizontal=True,
+        help=(
+            "auto: match the question — a one-fact question gets a one-line "
+            "answer. brief: always 3 sentences or fewer. detailed: always "
+            "thorough."
+        ),
+    )
+    max_revisions = retries.number_input("Max retries", 0, 5, 2)
+    submitted = st.form_submit_button("Research", type="primary", use_container_width=True)
 
 if submitted:
     if question.strip():
-        start(question.strip(), int(max_revisions))
+        start(question.strip(), int(max_revisions), length=length)
         # The stream above was the live feedback; rerun now so the review UI
         # and the sidebar both reflect the thread that was just created.
         st.rerun()
@@ -383,6 +398,7 @@ if st.session_state.thread_id:
                 start(
                     follow_up.strip(),
                     int(max_revisions),
+                    length=length,
                     parent={
                         "question": values.get("question", ""),
                         "report": report,
