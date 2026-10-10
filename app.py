@@ -16,7 +16,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langgraph.types import Command
 
-from research_agent.graph import DEFAULT_DB, compiled_graph
+from research_agent.graph import DEFAULT_DB, compiled_graph, draft_versions
 from research_agent.memory import describe, forget, open_store, status as memory_status
 from research_agent.tracing import graph_config, status as tracing_status
 
@@ -41,6 +41,11 @@ APPROVALS = {"approve", "approved", "ok", "yes"}
 def read_state(thread_id: str):
     with compiled_graph(DEFAULT_DB) as app:
         return app.get_state(graph_config(thread_id))
+
+
+def read_versions(thread_id: str) -> list[str]:
+    with compiled_graph(DEFAULT_DB) as app:
+        return draft_versions(app, graph_config(thread_id))
 
 
 def drive(payload, thread_id: str, status) -> None:
@@ -299,15 +304,19 @@ if st.session_state.thread_id:
         st.subheader("Final report")
         st.markdown(report)
 
-        # A revision replaces the draft on screen, but the original is still
-        # in the checkpoint - show it rather than appearing to lose it.
-        if draft and draft.strip() != report.strip():
-            with st.expander("📄 The original draft, before your changes"):
+        # Nothing is ever overwritten - every version is still in the
+        # checkpointer. Show them rather than appearing to lose them.
+        versions = read_versions(st.session_state.thread_id)
+        if len(versions) > 1:
+            with st.expander(f"🕘 Earlier versions ({len(versions) - 1})"):
                 st.caption(
-                    "Your revision notes rewrote the report. This is what it "
-                    "said beforehand - nothing was lost."
+                    "Every rewrite is kept. This is what the report said "
+                    "before your changes — oldest first. Nothing is lost."
                 )
-                st.markdown(draft)
+                for i, text in enumerate(versions[:-1], start=1):
+                    st.markdown(f"**Version {i}** · {len(text)} characters")
+                    st.markdown(text)
+                    st.divider()
         st.download_button(
             "Download as Markdown",
             report,

@@ -85,6 +85,22 @@ def compiled_graph(db_path: str = DEFAULT_DB):
         yield build_graph().compile(checkpointer=checkpointer, store=store)
 
 
+def draft_versions(app, config: dict) -> list[str]:
+    """Every distinct version of the report for one thread, oldest first.
+
+    Nothing is ever overwritten in the checkpointer - each revision is a new
+    checkpoint - so the full editing history is recoverable. This walks it and
+    returns the versions, deduplicated and in the order they were written.
+    """
+    versions: list[str] = []
+    for snapshot in reversed(list(app.get_state_history(config))):
+        for field in ("draft", "final_report"):
+            text = (snapshot.values.get(field) or "").strip()
+            if text and text not in versions:
+                versions.append(text)
+    return versions
+
+
 def draw_mermaid() -> str:
     """Return a Mermaid diagram of the graph - handy for your README."""
     return build_graph().compile().get_graph().draw_mermaid()
