@@ -47,3 +47,37 @@ def test_whitespace_only_differences_are_not_new_versions():
 
 def test_a_run_with_no_draft_yet_has_no_versions():
     assert draft_versions(FakeApp([FakeSnapshot(question="q")]), {}) == []
+
+
+# --------------------------------------------------------------------------
+# report_timeline - the conversation, reconstructed from checkpoints
+# --------------------------------------------------------------------------
+from research_agent.graph import report_timeline
+
+
+def test_timeline_pairs_each_version_with_the_note_that_caused_it():
+    app = FakeApp([
+        FakeSnapshot(draft="short v2", final_report="short v2",
+                     human_feedback="make it shorter"),
+        FakeSnapshot(draft="long v1", human_feedback="make it shorter"),
+        FakeSnapshot(draft="long v1"),
+    ])
+    timeline = report_timeline(app, {})
+
+    assert [e["text"] for e in timeline] == ["long v1", "short v2"]
+    assert timeline[0]["instruction"] is None, "the first draft was not requested"
+    assert timeline[1]["instruction"] == "make it shorter"
+
+
+def test_approval_is_not_shown_as_an_instruction():
+    """'approve' is a decision, not a revision note - it must not appear as
+    something the user asked for."""
+    app = FakeApp([
+        FakeSnapshot(draft="the answer", final_report="the answer",
+                     human_feedback="approve"),
+        FakeSnapshot(draft="the answer"),
+    ])
+    timeline = report_timeline(app, {})
+
+    assert len(timeline) == 1
+    assert timeline[0]["instruction"] is None

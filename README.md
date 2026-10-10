@@ -53,6 +53,7 @@ researches again. Otherwise it goes to human review.
 | Durable checkpointing | `SqliteSaver` in `graph.py` | Every step is saved; runs resume across processes |
 | Human-in-the-loop | `interrupt()` in `nodes.py` | Graph pauses mid-run, a human decides, execution resumes |
 | Unlimited revision | `route_after_finalize` | Each rewrite returns to the gate; only approval ends the run |
+| Full conversation view | `report_timeline` | Question, answer and every revision, rebuilt from the checkpoints |
 | Long-term memory | `memory.py` | Finished reports are stored and semantically recalled by later runs |
 | Observability | `tracing.py` | Every run named and tagged, with `thread_id` in metadata |
 | Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |

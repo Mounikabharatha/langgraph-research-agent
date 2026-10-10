@@ -16,7 +16,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langgraph.types import Command
 
-from research_agent.graph import DEFAULT_DB, compiled_graph, draft_versions
+from research_agent.graph import DEFAULT_DB, compiled_graph, report_timeline
 from research_agent.memory import describe, forget, open_store, status as memory_status
 from research_agent.tracing import graph_config, status as tracing_status
 
@@ -43,9 +43,9 @@ def read_state(thread_id: str):
         return app.get_state(graph_config(thread_id))
 
 
-def read_versions(thread_id: str) -> list[str]:
+def read_timeline(thread_id: str) -> list[dict]:
     with compiled_graph(DEFAULT_DB) as app:
-        return draft_versions(app, graph_config(thread_id))
+        return report_timeline(app, graph_config(thread_id))
 
 
 def drive(payload, thread_id: str, status) -> None:
@@ -101,6 +101,40 @@ def list_threads() -> list[tuple[str, str, str | None]]:
                 (tid, snap.values.get("question", "?"), snap.next[0] if snap.next else None)
             )
     return out
+
+
+def render_conversation(values: dict, timeline: list[dict]) -> None:
+    """Show the whole exchange: question, answer, every revision asked for.
+
+    Reconstructed from the checkpoints, so it survives a reload and shows
+    earlier versions that a rewrite replaced on screen.
+    """
+    with st.chat_message("user"):
+        st.markdown(values.get("question", ""))
+
+    for i, entry in enumerate(timeline):
+        if entry["instruction"]:
+            with st.chat_message("user"):
+                st.markdown(f"*{entry['instruction']}*")
+
+        latest = i == len(timeline) - 1
+        with st.chat_message("assistant"):
+            if latest:
+                st.markdown(entry["text"])
+            else:
+                # Superseded, but kept. Say WHY it was replaced: a version with
+                # no instruction behind it came from the critic's own retry
+                # loop, not from anything the reader asked for.
+                why = (
+                    "you asked for a change"
+                    if timeline[i + 1]["instruction"]
+                    else "the critic sent it back for more research"
+                )
+                with st.expander(
+                    f"Earlier version · {len(entry['text'])} characters · "
+                    f"replaced because {why}"
+                ):
+                    st.markdown(entry["text"])
 
 
 # --------------------------------------------------------------------------
@@ -220,6 +254,16 @@ if st.session_state.thread_id:
     values = snap.values
     st.divider()
 
+    # The question itself was never shown here - only truncated in the
+    # sidebar - so it was easy to lose track of what was being answered.
+    st.markdown(f"### {values.get('question', '(no question)')}")
+
+    parent = next(
+        (m for m in (values.get("recalled") or []) if m.get("carried")), None
+    )
+    if parent:
+        st.caption(f"↳ follow-up to: *{parent.get('question', '')}*")
+
     a, b, c = st.columns(3)
     a.metric("Sub-questions", len(values.get("plan", [])))
     b.metric("Sources found", len(values.get("findings", [])))
@@ -266,17 +310,17 @@ if st.session_state.thread_id:
 
     elif stopped_at == REVIEW_GATE:
         edits = values.get("edits", 0)
-        st.subheader("Draft for review" if not edits else f"Rewrite {edits} for review")
+        render_conversation(values, read_timeline(st.session_state.thread_id))
+        if values.get("critique") and not edits:
+            st.info(f"**Critic:** {values['critique']}")
+
+        st.divider()
+        st.markdown("#### Your turn")
         if edits:
             st.caption(
                 f"You have asked for {edits} change{'s' if edits > 1 else ''}. "
                 "Keep going, or approve when you are happy — there is no limit."
             )
-        elif values.get("critique"):
-            st.info(f"**Critic:** {values['critique']}")
-        st.markdown(draft or "")
-
-        st.divider()
         notes = st.text_area(
             "Revision notes — how should the draft above be rewritten?",
             placeholder="Make it shorter. Drop the last section. Add trade-offs.",
@@ -310,22 +354,9 @@ if st.session_state.thread_id:
                 st.warning("Write what you want changed, or press Approve.")
 
     elif report:
-        st.subheader("Final report")
-        st.markdown(report)
+        render_conversation(values, read_timeline(st.session_state.thread_id))
+        st.success("✅ Approved — this question is finished.")
 
-        # Nothing is ever overwritten - every version is still in the
-        # checkpointer. Show them rather than appearing to lose them.
-        versions = read_versions(st.session_state.thread_id)
-        if len(versions) > 1:
-            with st.expander(f"🕘 Earlier versions ({len(versions) - 1})"):
-                st.caption(
-                    "Every rewrite is kept. This is what the report said "
-                    "before your changes — oldest first. Nothing is lost."
-                )
-                for i, text in enumerate(versions[:-1], start=1):
-                    st.markdown(f"**Version {i}** · {len(text)} characters")
-                    st.markdown(text)
-                    st.divider()
         st.download_button(
             "Download as Markdown",
             report,

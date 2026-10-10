@@ -92,20 +92,37 @@ def compiled_graph(db_path: str = DEFAULT_DB):
         yield build_graph().compile(checkpointer=checkpointer, store=store)
 
 
-def draft_versions(app, config: dict) -> list[str]:
-    """Every distinct version of the report for one thread, oldest first.
+def report_timeline(app, config: dict) -> list[dict]:
+    """Reconstruct the whole back-and-forth for one thread, oldest first.
 
-    Nothing is ever overwritten in the checkpointer - each revision is a new
-    checkpoint - so the full editing history is recoverable. This walks it and
-    returns the versions, deduplicated and in the order they were written.
+    Returns `[{"text": ..., "instruction": ...}]` where `instruction` is the
+    revision note that produced that version, or None for the first draft.
+
+    Nothing is ever overwritten in the checkpointer - each revision is its own
+    checkpoint - so the full conversation is recoverable after the fact.
     """
-    versions: list[str] = []
+    from .nodes import APPROVALS
+
+    timeline: list[dict] = []
+    seen: set[str] = set()
+
     for snapshot in reversed(list(app.get_state_history(config))):
+        values = snapshot.values
+        feedback = (values.get("human_feedback") or "").strip()
+        instruction = feedback if feedback.lower() not in APPROVALS else None
+
         for field in ("draft", "final_report"):
-            text = (snapshot.values.get(field) or "").strip()
-            if text and text not in versions:
-                versions.append(text)
-    return versions
+            text = (values.get(field) or "").strip()
+            if text and text not in seen:
+                seen.add(text)
+                timeline.append({"text": text, "instruction": instruction})
+
+    return timeline
+
+
+def draft_versions(app, config: dict) -> list[str]:
+    """Just the distinct report versions, oldest first."""
+    return [entry["text"] for entry in report_timeline(app, config)]
 
 
 def draw_mermaid() -> str:
