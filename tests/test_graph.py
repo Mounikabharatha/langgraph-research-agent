@@ -182,9 +182,12 @@ def test_finalize_rewrite_updates_the_draft_too(monkeypatch):
 # --------------------------------------------------------------------------
 # Answer length - a one-fact question should not get an essay
 # --------------------------------------------------------------------------
-def test_auto_length_tells_the_writer_to_match_the_question():
+def test_auto_length_defaults_to_short():
+    """Auto used to say 'match the length to the question', which let a
+    comparison justify an essay. It now starts from short and makes length
+    something a question has to earn."""
     rule = nodes._length_rule({})
-    assert "MATCH THE LENGTH" in rule
+    assert "DEFAULT TO SHORT" in rule
     assert "1-3 sentences" in rule
 
 
@@ -219,3 +222,46 @@ def test_a_merely_similar_memory_is_not_treated_as_a_followup():
     found by similarity does not."""
     rule = nodes._followup_rule({"recalled": [{"question": "q", "score": 0.9}]})
     assert rule == ""
+
+
+# --------------------------------------------------------------------------
+# A revision cannot answer a new question - warn rather than silently reword
+# --------------------------------------------------------------------------
+@pytest.mark.parametrize("text", [
+    "what is meant by hybrid exactly",
+    "Which is better for city driving?",
+    "how does regenerative braking work",
+    "is it cheaper to run?",
+    "Tell me about charging times",
+])
+def test_question_shaped_notes_are_recognised(text):
+    assert nodes.looks_like_a_question(text) is True
+
+
+@pytest.mark.parametrize("text", [
+    "make it much shorter",
+    "drop the last section",
+    "put it in a table",
+    "add a one-line summary at the top",
+    "",
+])
+def test_genuine_edit_instructions_are_not_flagged(text):
+    assert nodes.looks_like_a_question(text) is False
+
+
+def test_the_revision_prompt_permits_cutting(monkeypatch):
+    """'Keep ALL inline citations intact' forced the model to retain every
+    claim, so 'make it shorter' could only reformat. It must be allowed to
+    drop material."""
+    captured = {}
+
+    class FakeLLM:
+        def invoke(self, messages):
+            captured["system"] = messages[0].content
+            return type("R", (), {"text": "short"})()
+
+    monkeypatch.setattr(nodes, "get_llm", lambda *a, **k: FakeLLM())
+    nodes.finalize_node({"draft": "long", "human_feedback": "make it shorter"})
+
+    assert "CUT material" in captured["system"]
+    assert "Keep all inline citations intact" not in captured["system"]

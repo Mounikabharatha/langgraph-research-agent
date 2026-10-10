@@ -214,6 +214,27 @@ def _format_findings(findings: list[Finding]) -> str:
     )
 
 
+QUESTION_OPENERS = (
+    "what", "why", "how", "when", "where", "which", "who", "is", "are",
+    "can", "could", "does", "do", "should", "will", "tell me",
+)
+
+
+def looks_like_a_question(text: str) -> bool:
+    """True if revision notes read as a new question rather than an edit.
+
+    A revision can only reshape the text already written - it has no way to
+    search for anything new. Typing a question here quietly gets you a
+    reworded version of the old answer, which is confusing, so the UI warns.
+    """
+    stripped = text.strip().lower()
+    if not stripped:
+        return False
+    if stripped.endswith("?"):
+        return True
+    return stripped.startswith(QUESTION_OPENERS)
+
+
 def _length_rule(state: ResearchState) -> str:
     """How long the answer should be. Without this the writer always writes an
     essay, even when asked what a chair costs."""
@@ -226,11 +247,11 @@ def _length_rule(state: ResearchState) -> str:
     if choice == "detailed":
         return "Give a thorough answer with headings where they help."
     return (
-        "MATCH THE LENGTH TO THE QUESTION. A narrow factual question ('what "
-        "does X cost?', 'when did Y happen?') gets a direct answer in 1-3 "
-        "sentences - lead with the fact itself. Only a genuinely broad "
-        "question earns headings and several paragraphs. Never pad an answer "
-        "to look thorough."
+        "DEFAULT TO SHORT. Most questions are answered well in 1-3 sentences "
+        "or 3-5 bullets, and that is what the reader wants. Lead with the "
+        "answer itself, not with context. Earn every extra paragraph: only a "
+        "question with several genuinely distinct parts justifies headings. "
+        "Never pad an answer to look thorough."
     )
 
 
@@ -323,8 +344,14 @@ def finalize_node(state: ResearchState) -> dict:
     response = llm.invoke(
         [
             SystemMessage(
-                "Revise the draft according to the reviewer's notes. "
-                "Keep all inline citations intact."
+                "Rewrite the draft to do exactly what the reviewer asked.\n"
+                "- If they asked for something SHORTER, CUT material. Removing "
+                "whole points is correct; reformatting the same content into "
+                "bullets is NOT shorter and does not satisfy the request.\n"
+                "- Keep the inline [n] citations on whatever you keep. Dropping "
+                "a claim drops its citation with it - that is fine.\n"
+                "- Do not add anything the draft did not already contain: you "
+                "have no sources beyond it."
             ),
             HumanMessage(f"Draft:\n{state['draft']}\n\nReviewer notes:\n{feedback}"),
         ]

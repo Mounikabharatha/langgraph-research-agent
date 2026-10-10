@@ -18,6 +18,7 @@ from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph, report_timeline
 from research_agent.memory import describe, forget, open_store
+from research_agent.nodes import looks_like_a_question
 from research_agent.tracing import graph_config
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
@@ -462,6 +463,14 @@ else:
             key=f"notes_{st.session_state.thread_id}_{edits}",
             label_visibility="collapsed",
         )
+        if looks_like_a_question(notes):
+            st.info(
+                "That reads like a **new question**. A revision can only "
+                "reshape the text above — it cannot look anything up. "
+                "Approve this answer first, then use **Ask a follow-up** to "
+                "research it properly."
+            )
+
         ok, redo = st.columns(2)
         if ok.button("✅  Approve", type="primary", use_container_width=True):
             if notes.strip():
