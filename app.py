@@ -307,13 +307,14 @@ with st.sidebar:
         entry(root)
 
     st.divider()
-    st.caption(tracing_status())
-    st.caption(memory_status())
-    st.caption(
-        "Gemini's free tier allows ~20 requests per day **per model**. "
-        "One run costs 3–5. Change `GEMINI_MODEL` in `.env` for a fresh "
-        "allowance."
-    )
+    with st.expander("⚙️  Status"):
+        st.caption(tracing_status())
+        st.caption(memory_status())
+        st.caption(
+            "Gemini's free tier allows ~20 requests per day **per model**. "
+            "One run costs 3–5. Change `GEMINI_MODEL` in `.env` for a fresh "
+            "allowance."
+        )
 
 
 # --------------------------------------------------------------------------
@@ -347,6 +348,12 @@ if st.session_state.error:
 # Home
 # --------------------------------------------------------------------------
 if not st.session_state.thread_id:
+    # An example button cannot write to question_box directly: Streamlit
+    # forbids touching a widget's key once that widget has been created.
+    # Stage it instead and apply it here, before the text area exists.
+    if "prefill" in st.session_state:
+        st.session_state.question_box = st.session_state.pop("prefill")
+
     st.title("🔎 Research Agent")
     st.caption(
         "Ask anything. It plans, searches the live web, writes a cited answer, "
@@ -392,7 +399,7 @@ if not st.session_state.thread_id:
     st.caption("Or try one of these:")
     for col, example in zip(st.columns(len(EXAMPLES)), EXAMPLES):
         if col.button(example, use_container_width=True, key=f"ex_{example[:12]}"):
-            st.session_state.question_box = example
+            st.session_state.prefill = example
             st.rerun()
 
     st.divider()
