@@ -16,6 +16,9 @@ venv/
 checkpoints.db
 memory.db
 
+# ...but the shipped demo databases are committed on purpose
+!demo/*.db
+
 # OS / editor
 .DS_Store
 .idea/

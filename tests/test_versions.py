@@ -81,3 +81,41 @@ def test_approval_is_not_shown_as_an_instruction():
 
     assert len(timeline) == 1
     assert timeline[0]["instruction"] is None
+
+
+# --------------------------------------------------------------------------
+# Demo seeding - a hosted free tier wipes the disk when the app sleeps
+# --------------------------------------------------------------------------
+def test_demo_data_is_copied_when_nothing_exists(tmp_path, monkeypatch):
+    from research_agent import graph
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "demo").mkdir()
+    (tmp_path / "demo" / "checkpoints.db").write_bytes(b"seed")
+    monkeypatch.setattr(graph, "DEMO_DIR", tmp_path / "demo")
+
+    assert graph.seed_demo_data("checkpoints.db") == ["checkpoints.db"]
+    assert (tmp_path / "checkpoints.db").read_bytes() == b"seed"
+
+
+def test_an_existing_database_is_never_overwritten(tmp_path, monkeypatch):
+    """Seeding must only fill a gap. Clobbering real work would be far worse
+    than an empty sidebar."""
+    from research_agent import graph
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "demo").mkdir()
+    (tmp_path / "demo" / "checkpoints.db").write_bytes(b"seed")
+    (tmp_path / "checkpoints.db").write_bytes(b"my real runs")
+    monkeypatch.setattr(graph, "DEMO_DIR", tmp_path / "demo")
+
+    assert graph.seed_demo_data("checkpoints.db") == []
+    assert (tmp_path / "checkpoints.db").read_bytes() == b"my real runs"
+
+
+def test_missing_demo_data_is_not_an_error(tmp_path, monkeypatch):
+    from research_agent import graph
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(graph, "DEMO_DIR", tmp_path / "demo")
+    assert graph.seed_demo_data("checkpoints.db") == []

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from langgraph.store.base import BaseStore
 
 NAMESPACE = ("research", "reports")
+DEMO_DIR = "demo"
 DEFAULT_STORE_DB = "memory.db"
 DEFAULT_EMBED_MODEL = "models/gemini-embedding-001"
 EMBED_DIMS = 3072

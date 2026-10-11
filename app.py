@@ -17,7 +17,12 @@ import streamlit as st
 from dotenv import load_dotenv
 from langgraph.types import Command
 
-from research_agent.graph import DEFAULT_DB, compiled_graph, report_timeline
+from research_agent.graph import (
+    DEFAULT_DB,
+    compiled_graph,
+    report_timeline,
+    seed_demo_data,
+)
 from research_agent.memory import describe, forget, open_store
 from research_agent.llm import model_names
 from research_agent.nodes import looks_like_a_question
@@ -35,6 +40,10 @@ except Exception:
     pass  # no secrets file locally, which is normal
 
 load_dotenv()
+
+# A hosted free tier wipes the disk when the app sleeps. Restore the demo
+# sessions so a visitor never arrives at an empty app.
+seed_demo_data("checkpoints.db", "memory.db")
 
 st.set_page_config(
     page_title="Research Agent",

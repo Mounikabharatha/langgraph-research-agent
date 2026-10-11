@@ -12,6 +12,7 @@ Compare this file with the code samples in the roadmap PDF. The real API is:
 from __future__ import annotations
 
 from contextlib import contextmanager
+from pathlib import Path
 
 from langgraph.graph import END, START, StateGraph
 
@@ -31,6 +32,11 @@ from .nodes import (
 from .state import ResearchState
 
 DEFAULT_DB = "checkpoints.db"
+
+# Databases shipped in the repo so a fresh deploy has something to show.
+# Hosted free tiers wipe the filesystem whenever the app sleeps, so without
+# this a visitor arriving at a cold app finds an empty sidebar.
+DEMO_DIR = Path("demo")
 
 
 def build_graph() -> StateGraph:
@@ -71,6 +77,24 @@ def build_graph() -> StateGraph:
     builder.add_edge("remember", END)
 
     return builder
+
+
+def seed_demo_data(*databases: str) -> list[str]:
+    """Copy the shipped demo databases into place if none exist yet.
+
+    Only ever fills a gap - an existing database is never touched, so this is
+    a no-op on a machine that has already been used.
+    """
+    import shutil
+
+    seeded = []
+    for name in databases:
+        target, source = Path(name), DEMO_DIR / Path(name).name
+        if target.exists() or not source.exists():
+            continue
+        shutil.copy2(source, target)
+        seeded.append(name)
+    return seeded
 
 
 @contextmanager
