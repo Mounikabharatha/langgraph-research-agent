@@ -106,6 +106,7 @@ def list_threads() -> list[dict]:
                 "id": tid,
                 "question": snap.values.get("question", "?"),
                 "next": snap.next[0] if snap.next else None,
+                "created": snap.created_at or "",
                 "parent": snap.values.get("parent_thread"),
                 # Runs made before parent_thread existed still know which
                 # question they followed up on, so fall back to matching that.
@@ -119,6 +120,39 @@ def list_threads() -> list[dict]:
             if match and match != item["id"]:
                 item["parent"] = match
     return out
+
+
+def chain_for(thread_id: str, threads: list[dict]) -> list[dict]:
+    """Every run in the same session as `thread_id`, oldest first.
+
+    A follow-up is its own run - its own sources, its own approval - but a
+    question and its follow-ups are one line of enquiry, so they are shown
+    and listed together.
+    """
+    by_id = {item["id"]: item for item in threads}
+    if thread_id not in by_id:
+        return []
+
+    root = by_id[thread_id]
+    seen = {root["id"]}
+    while root.get("parent") in by_id and root["parent"] not in seen:
+        seen.add(root["parent"])
+        root = by_id[root["parent"]]
+
+    children: dict[str, list[dict]] = {}
+    for item in threads:
+        if item.get("parent") in by_id:
+            children.setdefault(item["parent"], []).append(item)
+
+    ordered: list[dict] = []
+
+    def walk(node: dict) -> None:
+        ordered.append(node)
+        for child in sorted(children.get(node["id"], []), key=lambda c: c["created"]):
+            walk(child)
+
+    walk(root)
+    return ordered
 
 
 def render_conversation(values: dict, timeline: list[dict]) -> None:
@@ -156,7 +190,8 @@ def render_conversation(values: dict, timeline: list[dict]) -> None:
                     st.markdown(entry["text"])
 
 
-def render_followup_box(values: dict, report: str, approve_first: bool) -> None:
+def render_followup_box(values: dict, report: str, approve_first: bool,
+                        thread_id: str | None = None) -> None:
     """The 'ask something new' box.
 
     Offered both after approval and at the review gate. At the gate the
@@ -168,7 +203,7 @@ def render_followup_box(values: dict, report: str, approve_first: bool) -> None:
         "along — so you can say \"it\". Searches the web again."
         + (" Closes this answer first." if approve_first else "")
     )
-    thread_id = st.session_state.thread_id
+    thread_id = thread_id or st.session_state.thread_id
     follow_up = st.text_input(
         "Follow-up",
         placeholder="What does it cost? What is a hybrid, exactly?",
@@ -283,56 +318,56 @@ with st.sidebar:
     if not threads:
         st.caption("Nothing yet — ask something.")
 
-    by_id = {t["id"]: t for t in threads}
-    children: dict[str, list[dict]] = {}
-    roots: list[dict] = []
+    by_id = {item["id"]: item for item in threads}
+    roots = [t for t in threads if t.get("parent") not in by_id]
+    kids: dict[str, int] = {}
     for item in threads:
-        # A follow-up whose parent was deleted is shown as a root, not lost.
-        if item["parent"] and item["parent"] in by_id:
-            children.setdefault(item["parent"], []).append(item)
-        else:
-            roots.append(item)
-
-    def subtree(item: dict) -> list[dict]:
-        """This run plus every follow-up beneath it, at any depth."""
-        out = [item]
-        for child in children.get(item["id"], []):
-            out.extend(subtree(child))
-        return out
+        node = item
+        seen = {node["id"]}
+        while node.get("parent") in by_id and node["parent"] not in seen:
+            seen.add(node["parent"])
+            node = by_id[node["parent"]]
+        if node["id"] != item["id"]:
+            kids[node["id"]] = kids.get(node["id"], 0) + 1
 
     def icon(item: dict) -> str:
-        if item["next"] is None:
+        chain = chain_for(item["id"], threads)
+        last = chain[-1] if chain else item
+        if last["next"] is None:
             return "✓"
-        return "⏸" if item["next"] == REVIEW_GATE else "⚠️"
+        return "⏸" if last["next"] == REVIEW_GATE else "⚠️"
 
-    def entry(item: dict, depth: int = 0) -> None:
-        # Streamlit buttons cannot be indented with CSS here, so use
-        # figure-spaces to make the depth of a follow-up chain visible.
-        prefix = ("\u2007" * 2 * depth + "↳ ") if depth else ""
-        width = max(14, 28 - 2 * depth)
-        label = f"{icon(item)} {prefix}{item['question'][:width]}"
+    def entry(item: dict) -> None:
+        extra = kids.get(item["id"], 0)
+        suffix = f"  +{extra}" if extra else ""
+        label = f"{icon(item)} {item['question'][:28]}{suffix}"
+        selected = st.session_state.thread_id in {
+            c["id"] for c in chain_for(item["id"], threads)
+        }
 
         if delete_mode:
             open_col, bin_col = st.columns([5, 1])
-            if open_col.button(label, key=f"t_{item['id']}", use_container_width=True):
+            if open_col.button(label, key=f"t_{item['id']}", use_container_width=True,
+                               type="primary" if selected else "secondary"):
                 st.session_state.thread_id = item["id"]
                 st.session_state.error = None
                 st.rerun()
-            if bin_col.button("🗑", key=f"d_{item['id']}", help="Delete this run"):
+            if bin_col.button("🗑", key=f"d_{item['id']}", help="Delete this session"):
                 st.session_state.pending_delete = item["id"]
                 st.rerun()
         else:
-            if st.button(label, key=f"t_{item['id']}", use_container_width=True):
+            if st.button(label, key=f"t_{item['id']}", use_container_width=True,
+                         type="primary" if selected else "secondary"):
                 st.session_state.thread_id = item["id"]
                 st.session_state.error = None
                 st.rerun()
 
         if st.session_state.get("pending_delete") == item["id"]:
-            doomed = subtree(item)
-            extra = len(doomed) - 1
+            doomed = chain_for(item["id"], threads)
+            extra_n = len(doomed) - 1
             st.warning(
-                f"Delete this run{f' and its {extra} follow-up' if extra else ''}"
-                f"{'s' if extra > 1 else ''}? This cannot be undone."
+                f"Delete this session{f' and its {extra_n} follow-up' if extra_n else ''}"
+                f"{'s' if extra_n > 1 else ''}? This cannot be undone."
             )
             also_forget = st.checkbox(
                 "Also forget from long-term memory", key=f"f_{item['id']}"
@@ -346,12 +381,8 @@ with st.sidebar:
                 st.session_state.pending_delete = None
                 st.rerun()
 
-        for child in children.get(item["id"], []):
-            entry(child, depth + 1)
-
-    for root in reversed(roots):
+    for root in sorted(roots, key=lambda r: r["created"], reverse=True):
         entry(root)
-
 
 
 # --------------------------------------------------------------------------
@@ -451,7 +482,12 @@ if not st.session_state.thread_id:
 # One run
 # --------------------------------------------------------------------------
 else:
-    snap = read_state(st.session_state.thread_id)
+    all_threads = list_threads()
+    chain = chain_for(st.session_state.thread_id, all_threads)
+    # Act on the newest run in the session - that is the live one.
+    active_id = chain[-1]["id"] if chain else st.session_state.thread_id
+
+    snap = read_state(active_id)
     values = snap.values
     report = values.get("final_report")
     stopped_at = snap.next[0] if snap.next else None
@@ -464,29 +500,53 @@ else:
         badge = f"⚠️ Stopped at {stopped_at}"
 
     back, state_col = st.columns([1, 3])
-    if back.button("← All runs", use_container_width=True):
+    if back.button("← All sessions", use_container_width=True):
         st.session_state.thread_id = None
         st.rerun()
-    state_col.markdown(f"<div style='text-align:right;padding-top:0.5rem;opacity:0.75'>"
-                       f"{badge}</div>", unsafe_allow_html=True)
-
-    st.markdown(f"## {values.get('question', '(no question)')}")
-
-    parent = next(
-        (m for m in (values.get("recalled") or []) if m.get("carried")), None
+    state_col.markdown(
+        f"<div style='text-align:right;padding-top:0.5rem;opacity:0.75'>{badge}</div>",
+        unsafe_allow_html=True,
     )
-    if parent:
-        st.caption(f"↳ follow-up to: *{parent.get('question', '')}*")
 
-    # ---- the answer, first ----
-    if stopped_at and stopped_at != REVIEW_GATE:
-        st.warning(
-            f"This run stopped at **{stopped_at}** before producing a draft — "
-            "usually an API key or quota problem at the time. There is nothing "
-            "to approve. Ask the question again to start a fresh run."
-        )
-    else:
-        render_conversation(values, read_timeline(st.session_state.thread_id))
+    # ---- the whole session, oldest question first ----
+    for position, link in enumerate(chain):
+        link_state = snap if link["id"] == active_id else read_state(link["id"])
+        link_values = link_state.values
+
+        if position:
+            st.divider()
+            st.markdown(f"### ↳ {link_values.get('question', '')}")
+        else:
+            st.markdown(f"## {link_values.get('question', '')}")
+
+        if link["id"] == active_id and stopped_at and stopped_at != REVIEW_GATE:
+            st.warning(
+                f"This run stopped at **{stopped_at}** before producing a "
+                "draft — usually an API key or quota problem at the time."
+            )
+        else:
+            render_conversation(link_values, read_timeline(link["id"]))
+
+        with st.expander(
+            f"Under the hood · {len(link_values.get('plan', []))} sub-questions · "
+            f"{len(link_values.get('findings', []))} sources · "
+            f"{link_values.get('revision', 0)} critic passes"
+        ):
+            if link_values.get("recalled"):
+                st.markdown("**♻️ Recalled from earlier research**")
+                for m in link_values["recalled"]:
+                    st.markdown(f"- {m.get('question', '?')} · {describe(m)}")
+            if link_values.get("plan"):
+                st.markdown("**🧠 What it searched for**")
+                for q in link_values["plan"]:
+                    st.markdown(f"- {q}")
+            if link_values.get("findings"):
+                st.markdown(f"**🌐 Sources ({len(link_values['findings'])})**")
+                for i, f in enumerate(link_values["findings"], start=1):
+                    if f["url"]:
+                        st.markdown(f"{i}. [{f['title']}]({f['url']})")
+                    else:
+                        st.markdown(f"{i}. ⚠️ {f['title']} — {f['snippet'][:120]}")
 
     # ---- what you can do next ----
     if stopped_at == REVIEW_GATE:
@@ -514,7 +574,7 @@ else:
             height=110,
             # Key on the edit count so the box empties after each round
             # instead of re-submitting the previous instruction.
-            key=f"turn_{st.session_state.thread_id}_{edits}",
+            key=f"turn_{active_id}_{edits}",
             label_visibility="collapsed",
         )
 
@@ -523,7 +583,7 @@ else:
             ["auto", "brief", "detailed"],
             horizontal=True,
             index=["auto", "brief", "detailed"].index(st.session_state.length),
-            key=f"len_{st.session_state.thread_id}_{edits}",
+            key=f"len_{active_id}_{edits}",
             help="Only applies to a follow-up — a revision keeps the length "
                  "you ask for in the box.",
         )
@@ -540,7 +600,7 @@ else:
         if follow_col.button("🔎  Research follow-up", use_container_width=True):
             if text.strip():
                 st.session_state.length = length
-                parent_thread = st.session_state.thread_id
+                parent_thread = active_id
                 resume("approve")
                 parent_report = read_state(parent_thread).values.get("final_report", "")
                 start(
@@ -588,7 +648,7 @@ else:
 
         st.divider()
         st.markdown("#### Ask a follow-up")
-        render_followup_box(values, report, approve_first=False)
+        render_followup_box(values, report, approve_first=False, thread_id=active_id)
 
     # ---- how it got there ----
     st.divider()
@@ -624,26 +684,18 @@ else:
                 else:
                     st.markdown(f"{i}. ⚠️ {f['title']} — {f['snippet'][:120]}")
 
-    with st.expander("🗑️ Delete this run"):
-        followups = [
-            item for item in list_threads()
-            if item["parent"] == st.session_state.thread_id
-        ]
+    st.divider()
+    with st.expander("🗑️ Delete this session"):
+        extra = len(chain) - 1
         st.caption(
-            "Removes the run and its checkpoints. Cannot be undone. The report "
-            "it saved to long-term memory is separate — tick below to drop that too."
+            f"Removes this question{f' and its {extra} follow-up' if extra else ''}"
+            f"{'s' if extra > 1 else ''} along with every checkpoint. Cannot be "
+            "undone. Reports saved to long-term memory are separate — tick "
+            "below to drop those too."
         )
-        if followups:
-            st.caption(
-                f"This question has **{len(followups)} follow-up"
-                f"{'s' if len(followups) > 1 else ''}**. Use the 🗑 Delete toggle "
-                "in the sidebar to remove the whole chain at once."
-            )
-        also_forget = st.checkbox("Also forget it from long-term memory")
+        also_forget = st.checkbox("Also forget from long-term memory")
         if st.button("Delete permanently", type="secondary"):
-            delete_runs(
-                [(st.session_state.thread_id, values.get("question", ""))], also_forget
-            )
+            delete_runs([(c["id"], c["question"]) for c in chain], also_forget)
             st.rerun()
 
-    st.caption(f"thread `{st.session_state.thread_id}`")
+    st.caption(f"{len(chain)} question{'s' if len(chain) > 1 else ''} in this session · latest thread `{active_id}`")
