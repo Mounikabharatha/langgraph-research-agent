@@ -710,4 +710,6 @@ else:
             delete_runs([(c["id"], c["question"]) for c in chain], also_forget)
             st.rerun()
 
-    st.caption(f"{len(chain)} question{'s' if len(chain) > 1 else ''} in this session · latest thread `{active_id}`")
+    st.caption(
+        f"{len(chain)} question{'s' if len(chain) > 1 else ''} in this session"
+    )
