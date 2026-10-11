@@ -17,94 +17,127 @@ a day, so this is comfortable.
 
 ---
 
-## 1. The self-correction loop — the headline feature
+There are two sessions. The first is a five-question chain on one topic that
+exercises every control in the app; the second is a single short question in
+a different field. Together they leave an interviewer nothing to wonder about.
 
-> **What causes hallucination in large language models, and which techniques
-> have actually reduced it in production?**
+Budget: roughly 25 Gemini calls. The six-model fallback gives you about 120 a
+day.
+
+---
+
+# Session 1 — one topic, five questions, every control
+
+Topic: **Retrieval-Augmented Generation**. A real system-design interview
+subject, and it has natural follow-ups, which is what makes it a good chain.
+
+Do all of this **without leaving the session**. Only the very last step closes
+it.
+
+## Q1 · the opening question — auto, and the critic loop
 
 Answer length **auto**, Max critic passes **2**.
 
+> **What is Retrieval-Augmented Generation and when should a team use it
+> instead of fine-tuning?**
+
 Two-part questions usually leave the critic unsatisfied, so expect `research`
-to run **twice**, ending at **2 critic passes** and ~24 sources.
+to run **twice** and the run to end at **2 critic passes**, ~24 sources.
 
-Press **✅ Approve & close**.
+### Then revise it, before going anywhere
 
-**Why this question:** it is the one an interviewer is most likely to ask you
-anyway, so the answer is worth reading on its own. And the subject is pointed
-— an agent that cites its sources and re-checks its own draft is a direct
-answer to the hallucination problem it is describing.
+In the box at the review gate, type:
 
-**What it proves:** the agent judged its own output, decided it was thin, and
-went back to the web unprompted. Point at this first.
+> *cut the background and keep only what a team needs to decide, as 5 bullets*
+
+Press **✏️ Request changes**.
+
+**Watch for:** the previous answer stays on screen, expanded, under *"replaced
+because you asked for a change"*, with your instruction labelled **"You
+asked:"** between the two. Roughly 2,000 characters down to 600.
+
+> This is the single most useful thing to point at. It shows the agent
+> rewrote to order **without searching again** — the sources are unchanged.
+
+## Q2 · a follow-up — brief, and a pronoun
+
+Still at the gate. Set Answer length to **brief** and type:
+
+> **What are its main failure modes?**
+
+Press **🔎 Research follow-up**.
+
+**Watch for:** you wrote *"its"* and never said RAG. Open **Under the hood**
+on the new answer — the planned searches name retrieval-augmented generation
+explicitly, because the previous report was handed to the planner. The answer
+itself is three sentences, because you asked for brief.
+
+## Q3 · a follow-up — detailed
+
+Set Answer length to **detailed** and type:
+
+> **How do hybrid search and reranking fix those failures?**
+
+Press **🔎 Research follow-up**.
+
+**Watch for:** headings and several paragraphs. Put side by side with Q2 this
+shows the length control is doing real work, not decoration.
+
+## Q4 · a follow-up — back to auto
+
+Set Answer length back to **auto** and type:
+
+> **How would I measure whether my RAG pipeline is actually working?**
+
+Press **🔎 Research follow-up**.
+
+**Watch for:** a middle-sized answer. Auto reads the question and lands
+between Q2 and Q3 without being told.
+
+## Q5 · a follow-up — brief, and live data
+
+Set Answer length to **brief** and type:
+
+> **Which vector database is most used in production right now?**
+
+Press **🔎 Research follow-up**, then **✅ Approve & close**.
+
+**Watch for:** a short, current answer with live sources. "Right now" is the
+point — this cannot have come from training data.
+
+## What the finished session looks like
+
+The sidebar holds **one** entry marked **+4**. Opening it shows all five
+questions in order with their answers, the revision history on Q1, and
+*Under the hood* on each with its own sub-questions, sources and critic
+passes.
+
+Every claim in the README is visible in that one session:
+
+| Claim | Where to point |
+|---|---|
+| Plans its own sub-questions | *Under the hood* on any question |
+| Real, clickable sources | *Sources* on any question |
+| Critiques itself and retries | Q1, 2 critic passes, ~24 sources |
+| Rewrites to order without re-searching | Q1's revision, both versions shown |
+| Carries context between runs | Q2 — *"its"* resolved to RAG |
+| Length matches the request | Q2 brief vs Q3 detailed vs Q4 auto |
+| Searches the live web | Q5 — "right now" |
+| Human approves before anything closes | the whole session waited for you |
 
 ---
 
-## 2. A revision — before and after, side by side
+# Session 2 — a different field entirely
 
-> **Compare RAG and fine-tuning for adapting an LLM to a company's internal
-> documents**
-
-When the draft appears, type into the box:
-
-> *rather than long paragraphs give it to me in 5 short bullets*
-
-Press **✏️ Request changes**, then **✅ Approve & close**.
-
-**Why this question:** a genuine system-design interview question. The saved
-session doubles as revision material for you.
-
-**What it proves:** the session shows the original answer, your instruction
-labelled *"You asked:"*, and the rewrite — with the superseded version
-expanded beside it. Roughly 2,000 characters down to 600.
-
----
-
-## 3. A follow-up chain — context carrying between runs
-
-> **What is the Model Context Protocol?**
-
-Approve it. Then, in the same session, type:
-
-> *Which companies have adopted it?*
-
-Set Answer length to **brief**, press **🔎 Research follow-up**, approve.
-
-**Why this question:** MCP is recent enough that no model knows the adopter
-list from training data, so the answer can only have come from a live search.
-It also signals you follow the field.
-
-**What it proves:** you wrote *"it"* and the agent knew what you meant,
-because the previous report was handed to the planner. Open **Under the hood**
-on the follow-up and the searches name MCP explicitly. The sidebar shows one
-session marked **+1**, not two unrelated runs.
-
----
-
-## 4. A narrow question in a different field
+Press **➕ New question**. Answer length **auto**.
 
 > **What is the current repo rate set by the Reserve Bank of India?**
 
-Answer length **auto**. Approve.
+Approve.
 
-**Why this question:** deliberately nothing to do with AI. Four AI questions
-in a row invite the thought that the agent only handles one subject; this one
-shows the domain comes from the question, not the code. It is also a number
-that changes, so the answer can only have come from the live web.
-
-**What it proves:** two or three sentences, not an essay — the writer earns
-every extra paragraph.
-
----
-
-### Swaps, if you prefer
-
-- **1** → *"What are the trade-offs between vector search and keyword search
-  for retrieval?"*
-- **2** → *"Compare REST and GraphQL for a mobile backend"*
-- **4** → *"What is the current stable release of Python?"*
-
-Keep the shapes: one broad two-part question, one comparison you then shorten,
-one chain with a pronoun, one narrow factual question outside AI.
+**Why bother:** five AI questions in a row invite the thought that the agent
+only handles one subject. This one shows the domain comes from the question,
+not the code — and it is a number that changes, so again it can only be live.
 
 ## Saving them into the repo
 
