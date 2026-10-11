@@ -189,7 +189,11 @@ def render_conversation(values: dict, timeline: list[dict]) -> None:
     for i, entry in enumerate(timeline):
         if entry["instruction"]:
             with st.chat_message("user"):
-                st.markdown(f"**You asked:** {entry['instruction']}")
+                st.markdown(f"**✏️ Request changes:** {entry['instruction']}")
+                st.caption(
+                    "Rewrote the answer above from the sources already "
+                    "gathered — no new search."
+                )
 
         latest = i == len(timeline) - 1
         previous = i == len(timeline) - 2
@@ -591,8 +595,18 @@ else:
         if position:
             st.divider()
             st.markdown(f"### ↳ {link_values.get('question', '')}")
+            asked_via = "🔎 Research follow-up"
         else:
             st.markdown(f"## {link_values.get('question', '')}")
+            asked_via = "➕ New question"
+
+        # Say how this question was asked and what was chosen for it, so a
+        # reader can tell a follow-up from a revision without guessing.
+        chosen = (link_values.get("length") or "auto").lower()
+        st.caption(
+            f"{asked_via}  ·  answer length: **{chosen}**  ·  "
+            f"up to **{link_values.get('max_revisions', 2)}** critic passes"
+        )
 
         if link["id"] == active_id and stopped_at and stopped_at != REVIEW_GATE:
             st.warning(
