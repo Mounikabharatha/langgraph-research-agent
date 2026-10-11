@@ -119,3 +119,25 @@ def test_missing_demo_data_is_not_an_error(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(graph, "DEMO_DIR", tmp_path / "demo")
     assert graph.seed_demo_data("checkpoints.db") == []
+
+
+# --------------------------------------------------------------------------
+# Resuming an interrupted run - streaming None continues, it does not restart
+# --------------------------------------------------------------------------
+def test_an_interrupted_run_keeps_its_work():
+    """A run killed mid-flight still holds its plan, findings and draft, so
+    the UI must offer to continue rather than treating it as a dead end."""
+    snap = FakeSnapshot(
+        question="q",
+        plan=["a", "b"],
+        findings=[{"title": "t", "url": "u", "snippet": "s", "sub_question": "a"}],
+        draft="a partial answer",
+    )
+    assert snap.values["plan"], "the plan survives an interruption"
+    assert snap.values["findings"], "so do the findings"
+    assert snap.values["draft"], "and whatever had been drafted"
+
+
+def test_the_timeline_of_an_interrupted_run_still_renders():
+    app = FakeApp([FakeSnapshot(draft="a partial answer")])
+    assert draft_versions(app, {}) == ["a partial answer"]

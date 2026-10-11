@@ -350,6 +350,23 @@ def delete_runs(runs: list[tuple[str, str]], also_forget: bool) -> None:
         st.session_state.thread_id = None
 
 
+def continue_run(thread_id: str) -> None:
+    """Carry on from the last checkpoint after an interrupted run.
+
+    Streaming `None` resumes rather than restarting, so the searching and
+    drafting already done is kept. This is the checkpointer earning its keep:
+    a run killed by a restart, a crash or a dropped connection is not lost.
+    """
+    st.session_state.error = None
+    with st.status("Picking up where it stopped…", expanded=True) as status:
+        try:
+            drive(None, thread_id, status)
+            status.update(label="Ready for review", state="complete")
+        except Exception as exc:
+            st.session_state.error = friendly_error(exc)
+            status.update(label="Stopped again", state="error")
+
+
 def resume(feedback: str) -> None:
     st.session_state.error = None
     with st.status("Finalising…", expanded=True) as status:
@@ -609,10 +626,24 @@ else:
         )
 
         if link["id"] == active_id and stopped_at and stopped_at != REVIEW_GATE:
+            partial = link_values.get("draft") or ""
             st.warning(
-                f"This run stopped at **{stopped_at}** before producing a "
-                "draft — usually an API key or quota problem at the time."
+                f"This run was interrupted at the **{stopped_at}** step — a "
+                "restart, a dropped connection, or an API error at the time. "
+                "Nothing is lost: every step was checkpointed."
             )
+            st.caption(
+                f"It already has {len(link_values.get('plan') or [])} "
+                f"sub-questions and {len(link_values.get('findings') or [])} "
+                f"sources"
+                + (f", and a {len(partial)}-character draft." if partial else ".")
+            )
+            if st.button("▶️  Resume from where it stopped", type="primary"):
+                continue_run(link["id"])
+                st.rerun()
+            if partial:
+                with st.expander("What it had written so far"):
+                    st.markdown(partial)
         else:
             render_conversation(link_values, read_timeline(link["id"]))
 
