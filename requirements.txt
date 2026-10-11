@@ -1,2 +1,3 @@
-# Runtime dependencies are declared in pyproject.toml.
--e .
+# Deployment install. The ui extra brings in Streamlit itself;
+# runtime dependencies are declared in pyproject.toml.
+.[ui]
