@@ -1,28 +1,23 @@
 # Building the demo sessions
 
-These four sessions are what an interviewer sees when they open the live app.
-Between them they demonstrate every claim the README makes, and they cost
-nothing to read once saved.
+This is what an interviewer sees when they open the live app, and it costs
+them nothing to read.
+
+Two sessions. The first is a five-question chain on one topic that exercises
+every control in the app; the second is a single short question in a
+different field, so the set does not imply the agent only handles one
+subject.
 
 Run them **locally**, then commit the result (last section). Running them on
-the hosted app is pointless - that filesystem is wiped when the app sleeps.
+the hosted app is pointless — that filesystem is wiped when the app sleeps.
 
 ```bash
 rm -f checkpoints.db memory.db          # start clean
 .venv/bin/streamlit run app.py
 ```
 
-Budget: roughly 20 Gemini calls. The six-model fallback gives you about 120
+Budget: roughly 25 Gemini calls. The six-model fallback gives you about 120
 a day, so this is comfortable.
-
----
-
-There are two sessions. The first is a five-question chain on one topic that
-exercises every control in the app; the second is a single short question in
-a different field. Together they leave an interviewer nothing to wonder about.
-
-Budget: roughly 25 Gemini calls. The six-model fallback gives you about 120 a
-day.
 
 ---
 
