@@ -453,9 +453,11 @@ if not st.session_state.thread_id:
             ),
         )
         max_revisions = retries.number_input(
-            "Max retries", 0, 5, 2,
-            help="A ceiling on how often the critic may send the work back. "
-                 "Not a target — a satisfied critic uses none.",
+            "Max critic passes", 1, 5, 2,
+            help="How many times the critic may review the answer. The first "
+                 "pass always happens; each one after it means the critic was "
+                 "unsatisfied and sent the work back for more searching. A "
+                 "ceiling, not a target — most questions use just one.",
         )
         submitted = st.form_submit_button(
             "🔎  Research", type="primary", use_container_width=True
@@ -536,7 +538,8 @@ else:
         with st.expander(
             f"Under the hood · {len(link_values.get('plan', []))} sub-questions · "
             f"{len(link_values.get('findings', []))} sources · "
-            f"{link_values.get('revision', 0)} critic passes"
+            f"{link_values.get('revision', 0)} of "
+            f"{link_values.get('max_revisions', 2)} critic passes"
         ):
             if link_values.get("recalled"):
                 st.markdown("**♻️ Recalled from earlier research**")

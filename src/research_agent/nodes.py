@@ -24,6 +24,10 @@ from .memory import memory_key, recall, remember
 from .state import Finding, Memory, ResearchState
 from .tools import search
 
+# Maximum number of CRITIC PASSES, not retries: the first pass always
+# happens, so a value of 2 permits one trip back to research. The UI calls
+# this "Max critic passes" so the setting and the metric shown afterwards
+# are the same number.
 DEFAULT_MAX_REVISIONS = 2
 
 # What counts as "I'm happy with this" at the review gate.
