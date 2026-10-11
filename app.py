@@ -310,6 +310,10 @@ def resume(feedback: str) -> None:
 # by st.rerun() once the run finishes, not by moving this.
 # --------------------------------------------------------------------------
 with st.sidebar:
+    st.markdown("### 🔎 Research Agent")
+    st.caption("Plans · searches · cites · checks itself")
+    st.divider()
+
     if st.button("➕  New question", use_container_width=True, type="primary"):
         st.session_state.thread_id = None
         st.session_state.error = None
@@ -414,7 +418,13 @@ EXAMPLES = [
     "What skills do junior AI engineers need in 2026?",
 ]
 
-st.title("🔎 Research Agent")
+st.markdown(
+    "<style>"
+    "  [data-testid='stMainBlockContainer'] { padding-top: 2.5rem; }"
+    "  [data-testid='stSidebarUserContent'] { padding-top: 1.5rem; }"
+    "</style>",
+    unsafe_allow_html=True,
+)
 
 if st.session_state.error:
     st.error(st.session_state.error)
@@ -430,6 +440,9 @@ if not st.session_state.thread_id:
     if "prefill" in st.session_state:
         st.session_state.question_box = st.session_state.pop("prefill")
 
+    # Home gets the full title; on a run view the sidebar carries the name
+    # and the question itself should be the biggest thing on the page.
+    st.title("🔎 Research Agent")
     st.caption(
         "Ask anything. It plans, searches the live web, writes a cited answer, "
         "checks its own work, and waits for your approval."
