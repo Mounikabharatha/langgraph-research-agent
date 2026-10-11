@@ -265,3 +265,39 @@ def test_the_revision_prompt_permits_cutting(monkeypatch):
 
     assert "CUT material" in captured["system"]
     assert "Keep all inline citations intact" not in captured["system"]
+
+
+# --------------------------------------------------------------------------
+# Model fallback - the free tier is counted per model, per day
+# --------------------------------------------------------------------------
+def test_several_models_are_tried_in_order(monkeypatch):
+    from research_agent import llm
+
+    monkeypatch.setenv("LLM_PROVIDER", "google")
+    monkeypatch.setenv("GOOGLE_API_KEY", "fake")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+
+    names = llm.model_names()
+    assert names[0] == "gemini-3.1-flash-lite"
+    assert len(names) > 1, "a single model means one visitor can exhaust the day"
+    assert len(names) == len(set(names)), "no duplicates - they share no quota"
+
+
+def test_the_chosen_model_is_never_duplicated_in_the_chain(monkeypatch):
+    from research_agent import llm
+
+    monkeypatch.setenv("LLM_PROVIDER", "google")
+    monkeypatch.setenv("GOOGLE_API_KEY", "fake")
+    # Pick one that is also in the fallback list.
+    monkeypatch.setenv("GEMINI_MODEL", llm.GEMINI_FALLBACKS[0])
+
+    names = llm.model_names()
+    assert names.count(llm.GEMINI_FALLBACKS[0]) == 1
+
+
+def test_openai_provider_has_no_gemini_fallbacks(monkeypatch):
+    from research_agent import llm
+
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    assert llm.model_names() == ["gpt-4o-mini"]

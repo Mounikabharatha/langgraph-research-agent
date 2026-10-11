@@ -1,5 +1,8 @@
 # LangGraph Research Agent
 
+**Live demo:** _(add your Streamlit Cloud URL here after deploying — see
+[docs/DEPLOY.md](docs/DEPLOY.md))_
+
 A research assistant built with [LangGraph](https://langchain-ai.github.io/langgraph/).
 Give it a question; it plans sub-questions, searches the web, writes a cited
 answer, critiques its own work, loops back if the answer has gaps, and pauses
@@ -254,6 +257,8 @@ tests/          # runs without API keys
 - [x] LangSmith tracing
 - [ ] Postgres checkpointer for multi-user deployment
 - [x] Long-term memory across sessions
+- [x] Automatic model fail-over when a free-tier quota runs out
+- [ ] Deployed live demo
 
 ## A note on the LangGraph API
 

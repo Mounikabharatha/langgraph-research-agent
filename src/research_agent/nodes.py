@@ -146,7 +146,7 @@ def _recalled_context(recalled: list[Memory]) -> str:
 
 def plan_node(state: ResearchState) -> dict:
     """Decompose the user's question into concrete searchable sub-questions."""
-    llm = get_llm().with_structured_output(Plan)
+    llm = get_llm(schema=Plan)
     plan: Plan = llm.invoke(
         [
             SystemMessage(
@@ -300,7 +300,7 @@ def synthesize_node(state: ResearchState) -> dict:
 
 def critique_node(state: ResearchState) -> dict:
     """A second LLM acts as a critic. This is what makes the loop worthwhile."""
-    llm = get_llm().with_structured_output(Critique)
+    llm = get_llm(schema=Critique)
     verdict: Critique = llm.invoke(
         [
             SystemMessage(

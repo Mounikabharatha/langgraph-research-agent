@@ -1,0 +1,85 @@
+# Deploying the live demo
+
+The app is a Streamlit server, so it needs a host that keeps a Python process
+running with an open websocket.
+
+**Vercel and Netlify cannot host it.** They run static sites and short-lived
+serverless functions; there is nowhere for a long-running server to live, and
+the live `plan → research → synthesize` streaming depends on that connection
+staying open. Use one of these instead:
+
+| Host | Cost | Notes |
+|---|---|---|
+| **Streamlit Community Cloud** | Free | Purpose-built. Deploys straight from GitHub |
+| Hugging Face Spaces | Free | Also fine; pick the Streamlit SDK |
+| Render / Railway | Free tier | General Python hosting, more configuration |
+
+The steps below are for Streamlit Community Cloud.
+
+## 1. Push everything first
+
+```bash
+git push origin main
+```
+
+The deploy reads your GitHub repo, so anything unpushed will not appear.
+
+## 2. Create the app
+
+1. Go to https://share.streamlit.io and sign in with GitHub
+2. **New app** → pick `Mounikabharatha/langgraph-research-agent`
+3. Branch `main`, main file path `app.py`
+4. **Deploy**
+
+First build takes a few minutes while it installs the dependencies.
+
+## 3. Add your keys
+
+The repo has no keys in it, by design — the app will start but cannot do
+anything until you supply them.
+
+In the app's **⋮ → Settings → Secrets**, paste:
+
+```toml
+GOOGLE_API_KEY = "your-key"
+TAVILY_API_KEY = "your-key"
+LLM_PROVIDER = "google"
+GEMINI_MODEL = "gemini-3.1-flash-lite"
+```
+
+`app.py` copies anything in Secrets into the environment at startup, so the
+rest of the code keeps reading `os.getenv` and never learns about Streamlit.
+
+Save, and the app restarts with the keys in place.
+
+## 4. Your link
+
+```
+https://<app-name>.streamlit.app
+```
+
+That is what goes on your CV and in the README.
+
+## What to expect from the free tier
+
+**Storage is ephemeral.** Streamlit Community Cloud wipes the filesystem when
+the app sleeps or redeploys, so `checkpoints.db` and `memory.db` start empty
+again. Saved sessions do not survive a restart. If you want them to, swap
+`SqliteSaver` for `langgraph-checkpoint-postgres` pointed at a hosted Postgres
+such as Supabase - the change is contained to `graph.py` and `memory.py`.
+
+**Model quota is the real limit.** Gemini's free tier allows roughly 20
+requests per day *per model*, and one question costs 3-5. `llm.py` therefore
+tries four models in turn, failing over when one is exhausted, which lifts the
+practical ceiling to roughly 20 questions a day. When all four are spent the
+app says so plainly instead of showing a stack trace.
+
+**The app sleeps when idle** and takes 30-60 seconds to wake on the first
+visit. That is normal for the free tier; mention it if you are demonstrating
+live.
+
+## Before you share the link
+
+Ask three or four good questions and approve them, so a visitor arriving to an
+exhausted quota still has real sessions to read - complete with sources,
+critic passes and revision history. Those cost nothing to browse.

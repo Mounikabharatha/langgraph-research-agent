@@ -10,6 +10,7 @@ script on every interaction, so nothing may be held open across reruns.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 
 import streamlit as st
@@ -18,10 +19,21 @@ from langgraph.types import Command
 
 from research_agent.graph import DEFAULT_DB, compiled_graph, report_timeline
 from research_agent.memory import describe, forget, open_store
+from research_agent.llm import model_names
 from research_agent.nodes import looks_like_a_question
 from research_agent.tracing import graph_config
 
 logging.getLogger("google_genai").setLevel(logging.ERROR)
+
+# Locally the keys come from .env; on Streamlit Community Cloud they come
+# from the Secrets panel. Copy those into the environment so every module
+# can keep reading os.getenv and knows nothing about Streamlit.
+try:
+    for _key, _value in st.secrets.items():
+        os.environ.setdefault(_key, str(_value))
+except Exception:
+    pass  # no secrets file locally, which is normal
+
 load_dotenv()
 
 st.set_page_config(
@@ -272,8 +284,40 @@ def start(
             drive(payload, st.session_state.thread_id, status)
             status.update(label="Ready for review", state="complete")
         except Exception as exc:
-            st.session_state.error = f"{type(exc).__name__}: {exc}"
+            st.session_state.error = friendly_error(exc)
             status.update(label="Stopped", state="error")
+
+
+def friendly_error(exc: Exception) -> str:
+    """Turn a provider exception into something a visitor can act on.
+
+    A stack trace is the right thing for a developer and the wrong thing for
+    somebody who followed a link from a CV.
+    """
+    text = str(exc)
+    if "RESOURCE_EXHAUSTED" in text or "429" in text or "quota" in text.lower():
+        tried = ", ".join(f"`{n}`" for n in model_names())
+        return (
+            "**The daily free quota is used up.** This demo runs on Google "
+            "Gemini's free tier, which allows roughly 20 requests per day per "
+            f"model. It tried {tried} and all of them are spent.\n\n"
+            "The quota resets at midnight Pacific time. In the meantime, open "
+            "any saved session in the sidebar — those are real past runs, with "
+            "their sources and revision history, and reading them costs "
+            "nothing."
+        )
+    if "401" in text or "API key" in text or "API_KEY_INVALID" in text:
+        return (
+            "**A search or model API key is not working.** If you are running "
+            "this locally, check `.env`; if this is the hosted demo, the keys "
+            "need renewing."
+        )
+    if "Tavily" in text or "search" in text.lower():
+        return (
+            "**Web search is unavailable right now**, so there is nothing to "
+            "write an answer from. Try again in a moment."
+        )
+    return f"Something went wrong: {type(exc).__name__}: {text[:300]}"
 
 
 def delete_runs(runs: list[tuple[str, str]], also_forget: bool) -> None:
@@ -300,7 +344,7 @@ def resume(feedback: str) -> None:
             drive(Command(resume=feedback), st.session_state.thread_id, status)
             status.update(label="Done", state="complete")
         except Exception as exc:
-            st.session_state.error = f"{type(exc).__name__}: {exc}"
+            st.session_state.error = friendly_error(exc)
             status.update(label="Stopped", state="error")
 
 
