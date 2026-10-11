@@ -318,7 +318,7 @@ with st.sidebar:
 
     threads = list_threads()
     st.subheader("Saved runs")
-    delete_mode = st.toggle("🗑  Delete")
+    delete_mode = st.toggle("🗑️  Delete mode")
     if not threads:
         st.caption("Nothing yet — ask something.")
 
@@ -339,7 +339,7 @@ with st.sidebar:
         last = chain[-1] if chain else item
         if last["next"] is None:
             return "✓"
-        return "⏸" if last["next"] == REVIEW_GATE else "⚠️"
+        return "⏸️" if last["next"] == REVIEW_GATE else "⚠️"
 
     def entry(item: dict) -> None:
         extra = kids.get(item["id"], 0)
@@ -350,13 +350,15 @@ with st.sidebar:
         }
 
         if delete_mode:
-            open_col, bin_col = st.columns([5, 1])
+            open_col, bin_col = st.columns([4, 1])
             if open_col.button(label, key=f"t_{item['id']}", use_container_width=True,
                                type="primary" if selected else "secondary"):
                 st.session_state.thread_id = item["id"]
                 st.session_state.error = None
                 st.rerun()
-            if bin_col.button("🗑", key=f"d_{item['id']}", help="Delete this session"):
+            if bin_col.button("🗑️", key=f"d_{item['id']}",
+                              use_container_width=True,
+                              help="Delete this session"):
                 st.session_state.pending_delete = item["id"]
                 st.rerun()
         else:
@@ -499,7 +501,7 @@ else:
     if stopped_at is None:
         badge = "✅ Approved · closed"
     elif stopped_at == REVIEW_GATE:
-        badge = "⏸ Waiting for you"
+        badge = "⏸️ Waiting for you"
     else:
         badge = f"⚠️ Stopped at {stopped_at}"
 
