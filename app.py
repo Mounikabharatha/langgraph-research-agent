@@ -414,6 +414,8 @@ EXAMPLES = [
     "What skills do junior AI engineers need in 2026?",
 ]
 
+st.title("🔎 Research Agent")
+
 if st.session_state.error:
     st.error(st.session_state.error)
 
@@ -428,7 +430,6 @@ if not st.session_state.thread_id:
     if "prefill" in st.session_state:
         st.session_state.question_box = st.session_state.pop("prefill")
 
-    st.title("🔎 Research Agent")
     st.caption(
         "Ask anything. It plans, searches the live web, writes a cited answer, "
         "checks its own work, and waits for your approval."
