@@ -522,6 +522,16 @@ if not st.session_state.thread_id:
         "checks its own work, and waits for your approval."
     )
 
+    closed = st.session_state.pop("just_closed", None)
+    if closed:
+        st.success(f"✅ Saved — **{closed['question']}**")
+        back, _ = st.columns([2, 3])
+        if back.button(
+            "↩️  Reopen to ask a follow-up", use_container_width=True
+        ):
+            st.session_state.thread_id = closed["id"]
+            st.rerun()
+
     with st.form("ask"):
         question = st.text_area(
             "What do you want researched?",
@@ -678,11 +688,14 @@ else:
         st.divider()
         st.markdown("#### Your turn")
         st.caption(
-            "Type once, then choose what to do with it. **Request changes** "
-            "rewrites the answer above using the sources it already has. "
-            "**Research follow-up** treats it as a new question, searches the "
-            "web again, and closes this answer."
-            + (f"  ·  {edits} change{'s' if edits > 1 else ''} so far."
+            "Type once, then choose what to do with it.\n\n"
+            "• **✏️ Request changes** — rewrites the answer above from the "
+            "sources it already has. Stays here.\n"
+            "• **🔎 Research follow-up** — treats it as a new question and "
+            "searches again. **Continues this session**, nested below.\n"
+            "• **✅ Approve & close** — you are happy. **Ends the session** "
+            "and returns you to a blank one."
+            + (f"\n\n{edits} change{'s' if edits > 1 else ''} so far."
                if edits else "")
         )
 
@@ -755,8 +768,13 @@ else:
                 )
             else:
                 resume("approve")
-                # Closing a session returns you to a blank one. The finished
-                # session stays in the sidebar and can be reopened any time.
+                # Closing returns you to a blank session, but remember what
+                # was closed so home can offer one click back - changing your
+                # mind about a follow-up should not mean hunting the sidebar.
+                st.session_state.just_closed = {
+                    "id": chain[0]["id"],
+                    "question": chain[0]["question"],
+                }
                 st.session_state.thread_id = None
                 st.rerun()
 
