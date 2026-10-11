@@ -70,9 +70,20 @@ such as Supabase - the change is contained to `graph.py` and `memory.py`.
 
 **Model quota is the real limit.** Gemini's free tier allows roughly 20
 requests per day *per model*, and one question costs 3-5. `llm.py` therefore
-tries four models in turn, failing over when one is exhausted, which lifts the
-practical ceiling to roughly 20 questions a day. When all four are spent the
-app says so plainly instead of showing a stack trace.
+tries six models in turn, failing over when one is exhausted, which lifts the
+practical ceiling from about five questions a day to roughly twenty-five.
+When every model is spent the app says so plainly instead of showing a stack
+trace, and points the visitor at the saved sessions.
+
+Google retires models without much warning - `gemini-2.5-flash` was listed by
+the API and returned 404 when called. If answers start failing, run:
+
+```bash
+python scripts/check_models.py
+```
+
+It calls each model in the chain with the structured-output request the
+planner needs, and tells you which are working, exhausted or broken.
 
 **The app sleeps when idle** and takes 30-60 seconds to wake on the first
 visit. That is normal for the free tier; mention it if you are demonstrating

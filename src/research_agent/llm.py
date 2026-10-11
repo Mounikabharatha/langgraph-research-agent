@@ -24,12 +24,19 @@ DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
 }
 
-# Tried in order when the one before it runs out of free quota. Each entry
-# carries its own separate daily allowance.
+# Tried in order when the one before runs out of free quota. Each carries its
+# own separate daily allowance, so the chain multiplies the practical limit.
+#
+# Every entry has been checked against the structured-output call the planner
+# and critic depend on - listing a model is not proof it works. Google retires
+# models without much warning (gemini-2.5-flash was advertised and returned
+# 404), so re-run `python scripts/check_models.py` if answers start failing.
 GEMINI_FALLBACKS = [
     "gemini-3.5-flash",
     "gemini-3.6-flash",
-    "gemini-2.5-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
 ]
 
 
