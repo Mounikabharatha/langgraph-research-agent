@@ -466,9 +466,9 @@ STEPS = [
 ]
 
 EXAMPLES = [
-    "What is the current AQI in Delhi?",
-    "Compare electric and hybrid cars for Indian drivers",
-    "What skills do junior AI engineers need in 2026?",
+    "What is the Model Context Protocol?",
+    "Compare RAG and fine-tuning for internal company documents",
+    "What causes hallucination in large language models?",
 ]
 
 st.markdown(

@@ -19,68 +19,92 @@ a day, so this is comfortable.
 
 ## 1. The self-correction loop — the headline feature
 
-> **What are the main causes of air pollution in Delhi, and which measures
-> have actually reduced it?**
+> **What causes hallucination in large language models, and which techniques
+> have actually reduced it in production?**
 
-Leave Answer length on **auto**, Max critic passes on **2**.
+Answer length **auto**, Max critic passes **2**.
 
-Two-part questions usually leave the critic unsatisfied, so you should see
-`research` run **twice** and end with **2 critic passes** and ~24 sources.
+Two-part questions usually leave the critic unsatisfied, so expect `research`
+to run **twice**, ending at **2 critic passes** and ~24 sources.
 
 Press **✅ Approve & close**.
 
-**What it proves:** the agent judged its own draft, decided it was thin, and
-went back to the web unprompted. This is the thing that makes it an agent
-rather than a chatbot, and it is the first thing to point at.
+**Why this question:** it is the one an interviewer is most likely to ask you
+anyway, so the answer is worth reading on its own. And the subject is pointed
+— an agent that cites its sources and re-checks its own draft is a direct
+answer to the hallucination problem it is describing.
+
+**What it proves:** the agent judged its own output, decided it was thin, and
+went back to the web unprompted. Point at this first.
 
 ---
 
 ## 2. A revision — before and after, side by side
 
-> **Compare electric and hybrid cars for Indian drivers**
+> **Compare RAG and fine-tuning for adapting an LLM to a company's internal
+> documents**
 
 When the draft appears, type into the box:
 
 > *rather than long paragraphs give it to me in 5 short bullets*
 
-Press **✏️ Request changes**. Then **✅ Approve & close**.
+Press **✏️ Request changes**, then **✅ Approve & close**.
 
-**What it proves:** the session now shows the original answer, your
-instruction labelled *"You asked:"*, and the rewritten version - with the
-superseded one expanded so the two can be compared. Roughly 2,000 characters
-down to 600.
+**Why this question:** a genuine system-design interview question. The saved
+session doubles as revision material for you.
+
+**What it proves:** the session shows the original answer, your instruction
+labelled *"You asked:"*, and the rewrite — with the superseded version
+expanded beside it. Roughly 2,000 characters down to 600.
 
 ---
 
 ## 3. A follow-up chain — context carrying between runs
 
-> **Which laptop is best for gaming in 2026?**
+> **What is the Model Context Protocol?**
 
-Approve it. Then in the same session, type into the box:
+Approve it. Then, in the same session, type:
 
-> *What does it cost in India?*
+> *Which companies have adopted it?*
 
-Set Answer length to **brief**, and press **🔎 Research follow-up**.
-Approve that too.
+Set Answer length to **brief**, press **🔎 Research follow-up**, approve.
 
-**What it proves:** you wrote *"it"* and the agent knew which laptop, because
-the previous report was handed to the planner. Open **Under the hood** on the
-follow-up and the searches name the actual model. The sidebar shows one
+**Why this question:** MCP is recent enough that no model knows the adopter
+list from training data, so the answer can only have come from a live search.
+It also signals you follow the field.
+
+**What it proves:** you wrote *"it"* and the agent knew what you meant,
+because the previous report was handed to the planner. Open **Under the hood**
+on the follow-up and the searches name MCP explicitly. The sidebar shows one
 session marked **+1**, not two unrelated runs.
 
 ---
 
-## 4. A narrow question — length matching the question
+## 4. A narrow question in a different field
 
-> **What is the current AQI in Delhi?**
+> **What is the current repo rate set by the Reserve Bank of India?**
 
 Answer length **auto**. Approve.
 
-**What it proves:** two or three sentences, not an essay - the writer is told
-to earn every extra paragraph. It also proves the web search is real: no
-model knows today's AQI from training data.
+**Why this question:** deliberately nothing to do with AI. Four AI questions
+in a row invite the thought that the agent only handles one subject; this one
+shows the domain comes from the question, not the code. It is also a number
+that changes, so the answer can only have come from the live web.
+
+**What it proves:** two or three sentences, not an essay — the writer earns
+every extra paragraph.
 
 ---
+
+### Swaps, if you prefer
+
+- **1** → *"What are the trade-offs between vector search and keyword search
+  for retrieval?"*
+- **2** → *"Compare REST and GraphQL for a mobile backend"*
+- **4** → *"What is the current stable release of Python?"*
+
+Keep the shapes: one broad two-part question, one comparison you then shorten,
+one chain with a pronoun, one narrow factual question outside AI.
 
 ## Saving them into the repo
 
