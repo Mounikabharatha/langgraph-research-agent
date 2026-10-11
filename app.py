@@ -168,9 +168,10 @@ def render_conversation(values: dict, timeline: list[dict]) -> None:
     for i, entry in enumerate(timeline):
         if entry["instruction"]:
             with st.chat_message("user"):
-                st.markdown(f"*{entry['instruction']}*")
+                st.markdown(f"**You asked:** {entry['instruction']}")
 
         latest = i == len(timeline) - 1
+        previous = i == len(timeline) - 2
         with st.chat_message("assistant"):
             if latest:
                 st.markdown(entry["text"])
@@ -178,14 +179,17 @@ def render_conversation(values: dict, timeline: list[dict]) -> None:
                 # Superseded, but kept. Say WHY it was replaced: a version with
                 # no instruction behind it came from the critic's own retry
                 # loop, not from anything the reader asked for.
+                asked_for = bool(timeline[i + 1]["instruction"])
                 why = (
-                    "you asked for a change"
-                    if timeline[i + 1]["instruction"]
+                    "you asked for a change" if asked_for
                     else "the critic sent it back for more research"
                 )
+                # Open the one directly before the current answer, so a
+                # revision can be compared against what it replaced.
                 with st.expander(
                     f"Earlier version · {len(entry['text'])} characters · "
-                    f"replaced because {why}"
+                    f"replaced because {why}",
+                    expanded=previous and asked_for,
                 ):
                     st.markdown(entry["text"])
 
@@ -634,6 +638,9 @@ else:
                 )
             else:
                 resume("approve")
+                # Closing a session returns you to a blank one. The finished
+                # session stays in the sidebar and can be reopened any time.
+                st.session_state.thread_id = None
                 st.rerun()
 
     elif report:
