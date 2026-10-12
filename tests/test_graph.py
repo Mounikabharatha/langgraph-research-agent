@@ -182,37 +182,40 @@ def test_finalize_rewrite_updates_the_draft_too(monkeypatch):
 # --------------------------------------------------------------------------
 # Answer length - a one-fact question should not get an essay
 # --------------------------------------------------------------------------
-def test_auto_is_a_short_paragraph_not_a_single_line():
-    """Auto and short had collapsed into the same thing on factual questions,
-    which left auto doing no work. Auto now leads with the answer and adds
-    the context that matters; short remains the one-liner."""
+def test_auto_lets_the_question_set_the_length():
     rule = nodes._length_rule({})
-    assert "3 to 5 sentences" in rule
-    assert "FIRST sentence" in rule
-    assert "Do NOT answer in a single line" in rule
+    assert "LET THE QUESTION SET THE LENGTH" in rule
+    assert "first sentence" in rule
+    assert "do not truncate" in rule
 
 
 def test_auto_and_short_ask_for_different_things():
     assert nodes._length_rule({}) != nodes._length_rule({"length": "short"})
 
 
-def test_short_is_a_complete_answer_not_a_fragment():
-    """Short produced a bare 73-character stub that dropped the date the
-    figure applied from - technically short, but not an answer."""
+def test_short_compresses_rather_than_truncates():
     rule = nodes._length_rule({"length": "short"})
-    assert "COMPLETE sentences" in rule
+    assert "compressed to its essentials" in rule
     assert "misleading without" in rule
 
 
-def test_medium_is_the_middle_option_people_expected():
-    """The scale had no middle: 'brief' was the shortest setting, so anyone
-    wanting a few bullets had nowhere to go."""
+def test_medium_does_not_fix_the_number_of_bullets():
     rule = nodes._length_rule({"length": "medium"})
-    assert "3 to 5 short bullets" in rule
+    assert "as many bullets as the question actually needs" in rule
+    assert "Never pad to reach a number" in rule
 
 
 def test_long_asks_for_depth():
     assert "thorough" in nodes._length_rule({"length": "long"})
+
+
+@pytest.mark.parametrize("setting", ["auto", "short", "medium", "long"])
+def test_no_length_rule_hard_codes_a_count(setting):
+    """Length should come from the question. A fixed sentence or bullet count
+    makes a small question padded and a large one truncated."""
+    import re
+
+    assert not re.search(r"\b\d+\b", nodes._length_rule({"length": setting}))
 
 
 @pytest.mark.parametrize("old,new", [("brief", "short"), ("detailed", "long")])

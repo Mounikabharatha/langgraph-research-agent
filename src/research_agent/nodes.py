@@ -254,34 +254,41 @@ def _length_rule(state: ResearchState) -> str:
 
     if choice == "short":
         return (
-            "Answer in ONE OR TWO COMPLETE sentences - short, but a proper "
-            "answer rather than a fragment.\n"
-            "Keep whatever the answer would be misleading without: the date it "
-            "applies from, the unit, or a one-clause note if the sources "
-            "disagree. Drop everything else.\n"
+            "Give the SAME answer you would normally give, compressed to its "
+            "essentials. Length comes from the question, not from a target: a "
+            "one-fact question needs a sentence, a three-part question still "
+            "needs all three parts, stated tightly.\n"
+            "Never drop something the answer would be misleading without - the "
+            "date it applies from, the unit, a clause when sources disagree.\n"
             "No preamble, no headings, no bullets."
         )
     if choice == "medium":
         return (
-            "Answer in 3 to 5 short bullets, with one short sentence of lead-in "
-            "if it helps. No headings. Enough to be useful at a glance, not an "
-            "essay."
+            "Answer as bullets, with one short sentence of lead-in if it helps.\n"
+            "Use as many bullets as the question actually needs - a few for a "
+            "simple question, more for a many-sided one. Never pad to reach a "
+            "number and never drop a real point to stay under one.\n"
+            "No headings."
         )
     if choice == "long":
         return (
-            "Give a thorough answer with headings, covering the trade-offs and "
-            "the cases where the simple answer does not hold."
+            "Be thorough. Cover the trade-offs, the caveats, and the cases "
+            "where the simple answer stops holding. Use headings where there "
+            "are genuinely distinct sections, and skip them where there are "
+            "not."
         )
     return (
-        "Lead with the direct answer in the FIRST sentence - the fact, the "
+        "LET THE QUESTION SET THE LENGTH.\n"
+        "Lead with the direct answer in the first sentence - the fact, the "
         "number, the name - never a preamble.\n"
-        "Then add 2 to 4 more sentences of the context that actually matters: "
-        "when it changed, what it means in practice, or where the sources "
-        "disagree. Aim for a short paragraph of 3 to 5 sentences.\n"
-        "Do NOT answer in a single line; the reader can choose 'short' when "
-        "that is what they want. Equally, do not pad: a question with several "
-        "genuinely distinct parts earns more and may use headings, everything "
-        "else should stay inside that short paragraph."
+        "Then give exactly as much as the question asked for and no more. A "
+        "question containing one fact deserves a sentence or two plus whatever "
+        "context makes it meaningful. A question with several distinct parts "
+        "deserves all of them, with headings if that helps. A question asking "
+        "to compare or explain deserves real depth.\n"
+        "Do not pad a small question to look thorough, and do not truncate a "
+        "large one to look concise. The right length is whatever the question "
+        "actually demands."
     )
 
 
