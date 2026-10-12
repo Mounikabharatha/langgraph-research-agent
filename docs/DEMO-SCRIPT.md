@@ -131,28 +131,36 @@ the live web.
 
 Again, do not leave the session until the last step.
 
-## Q1 · the opening question — auto *(already done)*
+## Q1 · the opening question — auto
+
+Press **➕ New question**. Answer length **auto**, Max critic passes **2**.
 
 > **What is the current repo rate set by the Reserve Bank of India?**
 
-**2 critic passes, 9 sources.** Worth reading before you go on: the first
-draft said 5.25%, the critic flagged it as outdated, and the final answer
-reports the disagreement rather than picking one —
+Expect **2 critic passes** and ~9 sources: the first draft quotes one figure,
+the critic flags it as possibly outdated, and the second pass finds that
+sources disagree.
+
+**Read the final answer before going on.** When this was run it came back as:
 
 > *Sources from August 2026 cite 5.25%, while a source dated 7 October 2026
 > reports 5.50%.*
 
-**This is the best single thing in either session.** Most tools state one
+**That is the best single thing in either session.** Most tools state one
 number confidently. Yours found the sources conflicted, noticed the dates and
 said so, with citations for both. If an interviewer reads one answer, make it
 this one.
 
-## Q2 · a follow-up — brief, and a pronoun *(waiting at the gate)*
+## Q2 · a follow-up — brief, and a pronoun
+
+At the gate, set Answer length to **brief** and type:
 
 > **When was it last changed?**
 
-Already run at **brief**, 2 critic passes, 12 sources. You wrote *"it"* and
-never said "repo rate" — open **Under the hood** and the searches name it.
+**🔎 Research follow-up**
+
+**Watch for:** you wrote *"it"* and never said "repo rate" — open **Under the
+hood** and the searches name it.
 
 ### Revise it before moving on
 
