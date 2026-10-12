@@ -122,17 +122,101 @@ Every claim in the README is visible in that one session:
 
 ---
 
-# Session 2 — a different field entirely
+# Session 2 — a second chain, in a completely different field
 
-Press **➕ New question**. Answer length **auto**.
+Topic: **the RBI repo rate**. Nothing to do with AI, which is the point — five
+AI questions in a row invite the thought that the agent only handles one
+subject. It is also a number that changes, so every answer has to come from
+the live web.
+
+Again, do not leave the session until the last step.
+
+## Q1 · the opening question — auto *(already done)*
 
 > **What is the current repo rate set by the Reserve Bank of India?**
 
-Approve.
+**2 critic passes, 9 sources.** Worth reading before you go on: the first
+draft said 5.25%, the critic flagged it as outdated, and the final answer
+reports the disagreement rather than picking one —
 
-**Why bother:** five AI questions in a row invite the thought that the agent
-only handles one subject. This one shows the domain comes from the question,
-not the code — and it is a number that changes, so again it can only be live.
+> *Sources from August 2026 cite 5.25%, while a source dated 7 October 2026
+> reports 5.50%.*
+
+**This is the best single thing in either session.** Most tools state one
+number confidently. Yours found the sources conflicted, noticed the dates and
+said so, with citations for both. If an interviewer reads one answer, make it
+this one.
+
+## Q2 · a follow-up — brief, and a pronoun *(waiting at the gate)*
+
+> **When was it last changed?**
+
+Already run at **brief**, 2 critic passes, 12 sources. You wrote *"it"* and
+never said "repo rate" — open **Under the hood** and the searches name it.
+
+### Revise it before moving on
+
+In the box, type:
+
+> *just the date and the new rate, one line*
+
+Press **✏️ Request changes**.
+
+**Watch for:** the previous answer stays visible above, labelled *replaced
+because you asked for a change*, with your instruction between the two — and
+the sources are identical, because a revision does not search again.
+
+## Q3 · a follow-up — detailed
+
+Set Answer length to **detailed**:
+
+> **How does a change in the repo rate affect home loan EMIs in India?**
+
+**🔎 Research follow-up**
+
+**Watch for:** headings and worked detail. Next to Q2's one-liner, this is the
+length control visibly doing work.
+
+## Q4 · a follow-up — auto, and a definition
+
+Set Answer length to **auto**:
+
+> **What is the difference between the repo rate and the reverse repo rate?**
+
+**🔎 Research follow-up**
+
+**Watch for:** it should *define the difference*, not re-answer what the
+current rate is. Earlier versions drifted back to the parent topic on a
+question like this; the planner is now told to use the earlier answer only to
+resolve what the question refers to.
+
+## Q5 · a follow-up — brief, and wider context
+
+Set Answer length to **brief**:
+
+> **Which other major central banks have changed rates in 2026?**
+
+**🔎 Research follow-up**
+
+**Watch for:** a short answer that leaves India behind entirely — the chain
+carries context without being trapped by it.
+
+## Q6 · a follow-up — auto, and a future date
+
+Set Answer length to **auto**:
+
+> **When is the next RBI monetary policy committee meeting?**
+
+**🔎 Research follow-up**, then **✅ Approve & close**.
+
+**Watch for:** a date in the future. No model knows this from training data,
+so it can only have come from the live search.
+
+## What the finished session looks like
+
+A second sidebar entry marked **+5**, on a subject with no overlap with the
+first. Between the two sessions an interviewer can see every control used,
+on two unrelated topics, without spending anything to read them.
 
 ## Saving them into the repo
 
