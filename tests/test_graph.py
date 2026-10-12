@@ -182,13 +182,18 @@ def test_finalize_rewrite_updates_the_draft_too(monkeypatch):
 # --------------------------------------------------------------------------
 # Answer length - a one-fact question should not get an essay
 # --------------------------------------------------------------------------
-def test_auto_length_defaults_to_short():
-    """Auto used to say 'match the length to the question', which let a
-    comparison justify an essay. It now starts from short and makes length
-    something a question has to earn."""
+def test_auto_is_a_short_paragraph_not_a_single_line():
+    """Auto and short had collapsed into the same thing on factual questions,
+    which left auto doing no work. Auto now leads with the answer and adds
+    the context that matters; short remains the one-liner."""
     rule = nodes._length_rule({})
-    assert "DEFAULT TO SHORT" in rule
-    assert "1-3 sentences" in rule
+    assert "3 to 5 sentences" in rule
+    assert "FIRST sentence" in rule
+    assert "Do NOT answer in a single line" in rule
+
+
+def test_auto_and_short_ask_for_different_things():
+    assert nodes._length_rule({}) != nodes._length_rule({"length": "short"})
 
 
 def test_short_is_one_or_two_sentences():

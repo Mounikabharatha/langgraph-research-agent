@@ -269,11 +269,15 @@ def _length_rule(state: ResearchState) -> str:
             "the cases where the simple answer does not hold."
         )
     return (
-        "DEFAULT TO SHORT. Most questions are answered well in 1-3 sentences "
-        "or 3-5 bullets, and that is what the reader wants. Lead with the "
-        "answer itself, not with context. Earn every extra paragraph: only a "
-        "question with several genuinely distinct parts justifies headings. "
-        "Never pad an answer to look thorough."
+        "Lead with the direct answer in the FIRST sentence - the fact, the "
+        "number, the name - never a preamble.\n"
+        "Then add 2 to 4 more sentences of the context that actually matters: "
+        "when it changed, what it means in practice, or where the sources "
+        "disagree. Aim for a short paragraph of 3 to 5 sentences.\n"
+        "Do NOT answer in a single line; the reader can choose 'short' when "
+        "that is what they want. Equally, do not pad: a question with several "
+        "genuinely distinct parts earns more and may use headings, everything "
+        "else should stay inside that short paragraph."
     )
 
 
