@@ -122,190 +122,85 @@ Every claim in the README is visible in that one session:
 
 ---
 
-# Session 2 — a second chain, in a completely different field
+# Session 2 — the RBI repo rate
 
-Topic: **the RBI repo rate**. Nothing to do with AI, which is the point — five
-AI questions in a row invite the thought that the agent only handles one
-subject. It is also a number that changes, so every answer has to come from
-the live web.
+Nothing to do with AI, which is the point: several AI questions in a row
+invite the thought that the agent only handles one subject. It is also a
+number that changes, so every answer has to come from the live web.
 
-Again, do not leave the session until the last step.
+Press **➕ New question**. Max critic passes **2** throughout. Do not leave
+the session until the last step.
 
-## Q1 · the opening question — auto
+| # | Answer length | Type this | Then press |
+|---|---|---|---|
+| Q1 | **auto** | What is the current repo rate set by the Reserve Bank of India? | 🔎 Research |
+| Q2 | **short** | When was it last changed? | 🔎 Research follow-up |
+| Q3 | **long** | How does a change in the repo rate affect home loan EMIs in India? | 🔎 Research follow-up |
+| ↳ | — | turn this into a worked example with actual numbers | ✏️ Request changes |
+| Q4 | **medium** | What is the difference between the repo rate and the reverse repo rate? | 🔎 Research follow-up |
+| Q5 | **auto** | When is the next RBI monetary policy committee meeting? | 🔎 Research follow-up, then ✅ Approve & close |
 
-Press **➕ New question**. Answer length **auto**, Max critic passes **2**.
+**Q1** should take **2 critic passes**: the first draft quotes one figure, the
+critic flags it as possibly stale, and the second pass finds the sources
+disagree. Read that answer — it reports the disagreement with dates instead of
+picking a number, which is the strongest thing in the whole demo.
 
-> **What is the current repo rate set by the Reserve Bank of India?**
+**Q2** proves two things at once: *"it"* resolves to the repo rate, and
+**short** really is one sentence.
 
-Expect **2 critic passes** and ~9 sources: the first draft quotes one figure,
-the critic flags it as possibly outdated, and the second pass finds that
-sources disagree.
+**The revision on Q3** turns a long explanation into a worked example. Check
+the sources are identical before and after — a revision rewrites, it does not
+search again.
 
-**Read the final answer before going on.** When this was run it came back as:
+**Q4** is a definition on purpose. It should define the difference, not
+re-answer the current rate, and **medium** should give 3–5 bullets.
 
-> *Sources from August 2026 cite 5.25%, while a source dated 7 October 2026
-> reports 5.50%.*
+**Q5** is a future date. No model knows it from training data.
 
-**That is the best single thing in either session.** Most tools state one
-number confidently. Yours found the sources conflicted, noticed the dates and
-said so, with citations for both. If an interviewer reads one answer, make it
-this one.
-
-## Q2 · a follow-up — brief, and a pronoun
-
-At the gate, set Answer length to **brief** and type:
-
-> **When was it last changed?**
-
-**🔎 Research follow-up**
-
-**Watch for:** you wrote *"it"* and never said "repo rate" — open **Under the
-hood** and the searches name it.
-
-### Revise it before moving on
-
-In the box, type:
-
-> *just the date and the new rate, one line*
-
-Press **✏️ Request changes**.
-
-**Watch for:** the previous answer stays visible above, labelled *replaced
-because you asked for a change*, with your instruction between the two — and
-the sources are identical, because a revision does not search again.
-
-## Q3 · a follow-up — detailed
-
-Set Answer length to **detailed**:
-
-> **How does a change in the repo rate affect home loan EMIs in India?**
-
-**🔎 Research follow-up**
-
-**Watch for:** headings and worked detail. Next to Q2's one-liner, this is the
-length control visibly doing work.
-
-## Q4 · a follow-up — auto, and a definition
-
-Set Answer length to **auto**:
-
-> **What is the difference between the repo rate and the reverse repo rate?**
-
-**🔎 Research follow-up**
-
-**Watch for:** it should *define the difference*, not re-answer what the
-current rate is. Earlier versions drifted back to the parent topic on a
-question like this; the planner is now told to use the earlier answer only to
-resolve what the question refers to.
-
-## Q5 · a follow-up — brief, and wider context
-
-Set Answer length to **brief**:
-
-> **Which other major central banks have changed rates in 2026?**
-
-**🔎 Research follow-up**
-
-**Watch for:** a short answer that leaves India behind entirely — the chain
-carries context without being trapped by it.
-
-## Q6 · a follow-up — auto, and a future date
-
-Set Answer length to **auto**:
-
-> **When is the next RBI monetary policy committee meeting?**
-
-**🔎 Research follow-up**, then **✅ Approve & close**.
-
-**Watch for:** a date in the future. No model knows this from training data,
-so it can only have come from the live search.
-
-## What the finished session looks like
-
-A second sidebar entry marked **+5**, on a subject with no overlap with the
-first. Between the two sessions an interviewer can see every control used,
-on two unrelated topics, without spending anything to read them.
+---
 
 # Session 3 — the attack surface of the thing you built
 
-Topic: **prompt injection**. The best third topic available, because your own
-agent reads web pages it did not choose and feeds them to a model — which is
-exactly the indirect-injection surface these questions describe.
-
-That gives you a sentence worth more than the session itself:
+Topic: **prompt injection**. Your own agent reads web pages it did not choose
+and feeds them to a model — which is exactly the indirect-injection surface
+these questions describe. That gives you a sentence worth more than the
+session itself:
 
 > *"I researched the attack surface of the kind of system I had just built."*
 
-Four questions and one revision. Same rules: do not leave the session until
-the end.
+| # | Answer length | Type this | Then press |
+|---|---|---|---|
+| Q1 | **auto** | What is prompt injection and why can it not be fully prevented? | 🔎 Research |
+| ↳ | — | turn this into a checklist a developer can act on | ✏️ Request changes |
+| Q2 | **long** | How do indirect prompt injection attacks work through retrieved documents? | 🔎 Research follow-up |
+| Q3 | **medium** | What is in the OWASP Top 10 for LLM applications? | 🔎 Research follow-up |
+| Q4 | **short** | What does LLM01 in that list refer to? | 🔎 Research follow-up |
+| Q5 | **auto** | Which of those risks apply to an agent that can call tools? | 🔎 Research follow-up, then ✅ Approve & close |
 
-## Q1 · the opening question — auto, and the critic loop
+**The revision on Q1** restructures rather than shortens — a clearer
+demonstration of revision-versus-follow-up than "make it shorter".
 
-Press **➕ New question**. Answer length **auto**, Max critic passes **2**.
+**Q2** is the one to talk about. It is the attack that applies to your agent,
+and the answer is: it only ever *reads* what it retrieves, it never acts on
+instructions found in a page.
 
-> **What is prompt injection and why can it not be fully prevented?**
+**Q3 then Q4** put **medium** and **short** side by side — a list of bullets,
+then a one-line definition.
 
-A two-part question, so expect the critic to send it back at least once.
+**Q5's "those"** resolves to the OWASP list from Q3, which is context carried
+**two questions deep**, not just one.
 
-### Then revise it
+### If you would rather a different third topic
 
-> *turn this into a checklist a developer can act on*
+Same shape — broad opener you revise, a long middle, a medium list, a short
+definition, a pronoun at the end:
 
-**✏️ Request changes**
-
-**Watch for:** the explanation becomes actionable items, from the same
-sources. A revision that restructures rather than merely shortens is the
-clearer demonstration of the two being different operations.
-
-## Q2 · a follow-up — detailed
-
-Set Answer length to **detailed**:
-
-> **How do indirect prompt injection attacks work through retrieved
-> documents?**
-
-**🔎 Research follow-up**
-
-**Why this one matters:** this is the attack that applies to *your* agent. It
-searches the web and hands whatever it finds to a model. Being able to say
-"here is the attack, and here is why my agent only ever reads, never acts on
-what it reads" is a strong answer to a question most candidates have not
-thought about.
-
-## Q3 · a follow-up — brief, and a live fact
-
-Set Answer length to **brief**:
-
-> **What is in the OWASP Top 10 for LLM applications?**
-
-**🔎 Research follow-up**
-
-**Watch for:** a short list with a real source. The list has been revised
-since most models were trained, so this is a live-web answer.
-
-## Q4 · a follow-up — auto, and a pronoun
-
-Set Answer length to **auto**:
-
-> **Which of those risks apply to an agent that can call tools?**
-
-**🔎 Research follow-up**, then **✅ Approve & close**.
-
-**Watch for:** *"those"* resolves to the OWASP list from Q3 — context carried
-two questions deep, not just one.
-
-## If you would rather have a different third topic
-
-Both of these work the same way — one broad opener you then revise, a
-detailed middle, a brief factual one, and a pronoun at the end:
-
-- **Cost and latency in production** — *"What actually drives the cost of
-  serving an LLM in production?"* → *"How much does caching help?"* →
-  *"What is a typical time-to-first-token target?"* → *"Which of those
-  techniques need a model change?"*
+- **Cost and latency** — *"What actually drives the cost of serving an LLM in
+  production?"* → *"How much does caching help?"* → *"What is a typical
+  time-to-first-token target?"* → *"Which of those need a model change?"*
 - **Evaluation** — *"How do you evaluate an LLM application without ground
   truth?"* → *"How reliable is LLM-as-a-judge?"* → *"What is a golden
-  dataset?"* → *"Which of those approaches scale to production traffic?"*
+  dataset?"* → *"Which of those scale to production traffic?"*
 
 **What not to use:** questions about careers, salaries or which skills to
 learn. The answers are generic, they demonstrate nothing about your
