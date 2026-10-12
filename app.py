@@ -253,7 +253,7 @@ def render_followup_box(values: dict, report: str, approve_first: bool,
         st.session_state.length = length
         parent_report = report
         if approve_first:
-            resume("approve")
+            resume("approve", thread_id)
             parent_report = read_state(thread_id).values.get("final_report", report)
         start(
             follow_up.strip(),
@@ -367,11 +367,20 @@ def continue_run(thread_id: str) -> None:
             status.update(label="Stopped again", state="error")
 
 
-def resume(feedback: str) -> None:
+def resume(feedback: str, thread_id: str) -> None:
+    """Answer the review gate of ONE run.
+
+    The thread must be passed explicitly. Falling back to
+    st.session_state.thread_id resumed whichever run was selected in the
+    sidebar - the root of the session - rather than the live one at the end
+    of the chain. Immediately after creating a follow-up those are the same
+    thread, so the bug only appeared on returning to a session later: the
+    approve hit an already-closed run, did nothing, and reported success.
+    """
     st.session_state.error = None
     with st.status("Finalising…", expanded=True) as status:
         try:
-            drive(Command(resume=feedback), st.session_state.thread_id, status)
+            drive(Command(resume=feedback), thread_id, status)
             status.update(label="Done", state="complete")
         except Exception as exc:
             st.session_state.error = friendly_error(exc)
@@ -726,7 +735,7 @@ else:
 
         if change_col.button("✏️  Request changes", use_container_width=True):
             if text.strip():
-                resume(text.strip())
+                resume(text.strip(), active_id)
                 st.rerun()
             else:
                 st.warning("Write what you want changed.")
@@ -735,7 +744,7 @@ else:
             if text.strip():
                 st.session_state.length = length
                 parent_thread = active_id
-                resume("approve")
+                resume("approve", active_id)
                 parent_report = read_state(parent_thread).values.get("final_report", "")
                 start(
                     text.strip(),
@@ -767,7 +776,7 @@ else:
                     "**Research follow-up**, or clear it to approve as-is."
                 )
             else:
-                resume("approve")
+                resume("approve", active_id)
                 # Closing returns you to a blank session, but remember what
                 # was closed so home can offer one click back - changing your
                 # mind about a follow-up should not mean hunting the sidebar.

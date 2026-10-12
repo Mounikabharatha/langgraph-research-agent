@@ -141,3 +141,102 @@ def test_an_interrupted_run_keeps_its_work():
 def test_the_timeline_of_an_interrupted_run_still_renders():
     app = FakeApp([FakeSnapshot(draft="a partial answer")])
     assert draft_versions(app, {}) == ["a partial answer"]
+
+
+# --------------------------------------------------------------------------
+# The live run in a session is the LAST one, not the one clicked in the sidebar
+# --------------------------------------------------------------------------
+def _chain_for(thread_id, threads):
+    import importlib.util
+    import pathlib
+    import sys
+
+    import pytest
+
+    # Streamlit is an optional extra, so CI may not have it.
+    if importlib.util.find_spec("streamlit") is None:
+        pytest.skip("streamlit not installed")
+
+    # app.py is a Streamlit script, not part of the package; load it directly.
+    spec = importlib.util.spec_from_file_location(
+        "demo_app", pathlib.Path(__file__).resolve().parents[1] / "app.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.chain_for(thread_id, threads)
+
+
+def test_a_session_resolves_to_the_newest_run_from_any_member():
+    """Clicking the root in the sidebar must still act on the live follow-up.
+
+    Approving used the selected thread rather than the end of the chain, so
+    returning to a paused session and pressing Approve resumed the already
+    closed root, did nothing, and still said it had saved.
+    """
+    threads = [
+        {"id": "root", "question": "q1", "next": None, "parent": None,
+         "created": "2026-10-11T08:00:00"},
+        {"id": "kid", "question": "q2", "next": "human_review", "parent": "root",
+         "created": "2026-10-11T09:00:00"},
+    ]
+    for entry in ("root", "kid"):
+        chain = _chain_for(entry, threads)
+        assert [c["id"] for c in chain] == ["root", "kid"]
+        assert chain[-1]["id"] == "kid", "the live run is the end of the chain"
+
+
+def test_follow_ups_are_ordered_oldest_first():
+    threads = [
+        {"id": "a", "question": "q", "next": None, "parent": None,
+         "created": "2026-10-11T08:00:00"},
+        {"id": "c", "question": "q", "next": None, "parent": "a",
+         "created": "2026-10-11T10:00:00"},
+        {"id": "b", "question": "q", "next": None, "parent": "a",
+         "created": "2026-10-11T09:00:00"},
+    ]
+    assert [c["id"] for c in _chain_for("a", threads)] == ["a", "b", "c"]
+
+
+def test_resume_cannot_be_called_without_naming_a_thread():
+    """The real protection against the bug above.
+
+    resume() used to fall back to st.session_state.thread_id, so a caller
+    that forgot which run it meant silently got the wrong one. With no
+    default, forgetting is a TypeError at the call site instead.
+    """
+    import importlib.util
+    import inspect
+    import pathlib
+
+    import pytest
+
+    if importlib.util.find_spec("streamlit") is None:
+        pytest.skip("streamlit not installed")
+
+    spec = importlib.util.spec_from_file_location(
+        "demo_app", pathlib.Path(__file__).resolve().parents[1] / "app.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    param = inspect.signature(module.resume).parameters["thread_id"]
+    assert param.default is inspect.Parameter.empty, (
+        "thread_id must be required - a default lets a caller resume the "
+        "wrong run without noticing"
+    )
+
+
+def test_no_caller_resumes_the_sidebar_selection():
+    """The gate must act on the live run at the end of the chain, never on
+    whichever run happens to be selected in the sidebar."""
+    import pathlib
+
+    source = (pathlib.Path(__file__).resolve().parents[1] / "app.py").read_text()
+    bad = [
+        line.strip()
+        for line in source.splitlines()
+        if "resume(" in line
+        and "def resume" not in line
+        and "st.session_state.thread_id" in line
+    ]
+    assert not bad, f"these resume a sidebar selection rather than the live run: {bad}"
