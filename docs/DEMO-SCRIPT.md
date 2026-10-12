@@ -226,6 +226,91 @@ A second sidebar entry marked **+5**, on a subject with no overlap with the
 first. Between the two sessions an interviewer can see every control used,
 on two unrelated topics, without spending anything to read them.
 
+# Session 3 — the attack surface of the thing you built
+
+Topic: **prompt injection**. The best third topic available, because your own
+agent reads web pages it did not choose and feeds them to a model — which is
+exactly the indirect-injection surface these questions describe.
+
+That gives you a sentence worth more than the session itself:
+
+> *"I researched the attack surface of the kind of system I had just built."*
+
+Four questions and one revision. Same rules: do not leave the session until
+the end.
+
+## Q1 · the opening question — auto, and the critic loop
+
+Press **➕ New question**. Answer length **auto**, Max critic passes **2**.
+
+> **What is prompt injection and why can it not be fully prevented?**
+
+A two-part question, so expect the critic to send it back at least once.
+
+### Then revise it
+
+> *turn this into a checklist a developer can act on*
+
+**✏️ Request changes**
+
+**Watch for:** the explanation becomes actionable items, from the same
+sources. A revision that restructures rather than merely shortens is the
+clearer demonstration of the two being different operations.
+
+## Q2 · a follow-up — detailed
+
+Set Answer length to **detailed**:
+
+> **How do indirect prompt injection attacks work through retrieved
+> documents?**
+
+**🔎 Research follow-up**
+
+**Why this one matters:** this is the attack that applies to *your* agent. It
+searches the web and hands whatever it finds to a model. Being able to say
+"here is the attack, and here is why my agent only ever reads, never acts on
+what it reads" is a strong answer to a question most candidates have not
+thought about.
+
+## Q3 · a follow-up — brief, and a live fact
+
+Set Answer length to **brief**:
+
+> **What is in the OWASP Top 10 for LLM applications?**
+
+**🔎 Research follow-up**
+
+**Watch for:** a short list with a real source. The list has been revised
+since most models were trained, so this is a live-web answer.
+
+## Q4 · a follow-up — auto, and a pronoun
+
+Set Answer length to **auto**:
+
+> **Which of those risks apply to an agent that can call tools?**
+
+**🔎 Research follow-up**, then **✅ Approve & close**.
+
+**Watch for:** *"those"* resolves to the OWASP list from Q3 — context carried
+two questions deep, not just one.
+
+## If you would rather have a different third topic
+
+Both of these work the same way — one broad opener you then revise, a
+detailed middle, a brief factual one, and a pronoun at the end:
+
+- **Cost and latency in production** — *"What actually drives the cost of
+  serving an LLM in production?"* → *"How much does caching help?"* →
+  *"What is a typical time-to-first-token target?"* → *"Which of those
+  techniques need a model change?"*
+- **Evaluation** — *"How do you evaluate an LLM application without ground
+  truth?"* → *"How reliable is LLM-as-a-judge?"* → *"What is a golden
+  dataset?"* → *"Which of those approaches scale to production traffic?"*
+
+**What not to use:** questions about careers, salaries or which skills to
+learn. The answers are generic, they demonstrate nothing about your
+engineering, and they make the demo read as job-hunting rather than as work.
+
 ## Saving them into the repo
 
 ```bash
