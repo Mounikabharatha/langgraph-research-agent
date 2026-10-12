@@ -240,9 +240,9 @@ def render_followup_box(values: dict, report: str, approve_first: bool,
         key=f"fu_{thread_id}",
     )
     length = st.radio(
-        "Answer length", ["auto", "brief", "detailed"],
+        "Answer length", LENGTHS,
         horizontal=True, label_visibility="collapsed",
-        index=["auto", "brief", "detailed"].index(st.session_state.length),
+        index=length_index(st.session_state.length),
         key=f"fulen_{thread_id}",
     )
     label = "🔎  Research follow-up"
@@ -486,6 +486,17 @@ with st.sidebar:
 st.session_state.setdefault("length", "auto")
 st.session_state.setdefault("max_revisions", 2)
 
+LENGTHS = ["auto", "short", "medium", "long"]
+
+
+def length_index(value: str) -> int:
+    """Position in LENGTHS, tolerating the old brief/detailed names."""
+    from research_agent.nodes import LENGTH_ALIASES
+
+    name = LENGTH_ALIASES.get((value or "auto").lower(), (value or "auto").lower())
+    return LENGTHS.index(name) if name in LENGTHS else 0
+
+
 STEPS = [
     ("🧠", "Plan", "splits your question up"),
     ("🌐", "Search", "reads the live web"),
@@ -552,11 +563,13 @@ if not st.session_state.thread_id:
         opts, retries = st.columns([3, 1])
         length = opts.radio(
             "Answer length",
-            ["auto", "brief", "detailed"],
+            LENGTHS,
             horizontal=True,
             help=(
-                "auto: match the question — one fact in, one line out. "
-                "brief: always 3 sentences or fewer. detailed: always thorough."
+                "auto — the agent decides from the question.\n"
+                "short — one or two sentences, always.\n"
+                "medium — 3 to 5 bullets.\n"
+                "long — thorough, with headings."
             ),
         )
         max_revisions = retries.number_input(
@@ -723,9 +736,9 @@ else:
 
         length = st.radio(
             "Answer length for a follow-up",
-            ["auto", "brief", "detailed"],
+            LENGTHS,
             horizontal=True,
-            index=["auto", "brief", "detailed"].index(st.session_state.length),
+            index=length_index(st.session_state.length),
             key=f"len_{active_id}_{edits}",
             help="Only applies to a follow-up — a revision keeps the length "
                  "you ask for in the box.",

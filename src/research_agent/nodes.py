@@ -241,17 +241,33 @@ def looks_like_a_question(text: str) -> bool:
     return stripped.startswith(QUESTION_OPENERS)
 
 
+# "brief" and "detailed" are the old names for short and long; runs recorded
+# before the scale gained a middle option still carry them.
+LENGTH_ALIASES = {"brief": "short", "detailed": "long"}
+
+
 def _length_rule(state: ResearchState) -> str:
     """How long the answer should be. Without this the writer always writes an
     essay, even when asked what a chair costs."""
     choice = (state.get("length") or "auto").strip().lower()
-    if choice == "brief":
+    choice = LENGTH_ALIASES.get(choice, choice)
+
+    if choice == "short":
         return (
-            "Answer in at most 3 sentences, or 3 short bullets. No preamble, no "
-            "background, no headings. Lead with the direct answer."
+            "Answer in ONE OR TWO sentences. No preamble, no background, no "
+            "headings, no bullets. Lead with the fact itself and stop."
         )
-    if choice == "detailed":
-        return "Give a thorough answer with headings where they help."
+    if choice == "medium":
+        return (
+            "Answer in 3 to 5 short bullets, with one short sentence of lead-in "
+            "if it helps. No headings. Enough to be useful at a glance, not an "
+            "essay."
+        )
+    if choice == "long":
+        return (
+            "Give a thorough answer with headings, covering the trade-offs and "
+            "the cases where the simple answer does not hold."
+        )
     return (
         "DEFAULT TO SHORT. Most questions are answered well in 1-3 sentences "
         "or 3-5 bullets, and that is what the reader wants. Lead with the "

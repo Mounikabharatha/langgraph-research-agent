@@ -191,12 +191,25 @@ def test_auto_length_defaults_to_short():
     assert "1-3 sentences" in rule
 
 
-def test_brief_caps_the_answer():
-    assert "at most 3 sentences" in nodes._length_rule({"length": "brief"})
+def test_short_is_one_or_two_sentences():
+    assert "ONE OR TWO sentences" in nodes._length_rule({"length": "short"})
 
 
-def test_detailed_asks_for_depth():
-    assert "thorough" in nodes._length_rule({"length": "detailed"})
+def test_medium_is_the_middle_option_people_expected():
+    """The scale had no middle: 'brief' was the shortest setting, so anyone
+    wanting a few bullets had nowhere to go."""
+    rule = nodes._length_rule({"length": "medium"})
+    assert "3 to 5 short bullets" in rule
+
+
+def test_long_asks_for_depth():
+    assert "thorough" in nodes._length_rule({"length": "long"})
+
+
+@pytest.mark.parametrize("old,new", [("brief", "short"), ("detailed", "long")])
+def test_runs_recorded_under_the_old_names_still_work(old, new):
+    """Sessions saved before the rename must keep rendering and re-running."""
+    assert nodes._length_rule({"length": old}) == nodes._length_rule({"length": new})
 
 
 def test_an_unknown_length_falls_back_to_auto():
