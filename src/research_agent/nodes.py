@@ -254,8 +254,12 @@ def _length_rule(state: ResearchState) -> str:
 
     if choice == "short":
         return (
-            "Answer in ONE OR TWO sentences. No preamble, no background, no "
-            "headings, no bullets. Lead with the fact itself and stop."
+            "Answer in ONE OR TWO COMPLETE sentences - short, but a proper "
+            "answer rather than a fragment.\n"
+            "Keep whatever the answer would be misleading without: the date it "
+            "applies from, the unit, or a one-clause note if the sources "
+            "disagree. Drop everything else.\n"
+            "No preamble, no headings, no bullets."
         )
     if choice == "medium":
         return (

@@ -196,8 +196,12 @@ def test_auto_and_short_ask_for_different_things():
     assert nodes._length_rule({}) != nodes._length_rule({"length": "short"})
 
 
-def test_short_is_one_or_two_sentences():
-    assert "ONE OR TWO sentences" in nodes._length_rule({"length": "short"})
+def test_short_is_a_complete_answer_not_a_fragment():
+    """Short produced a bare 73-character stub that dropped the date the
+    figure applied from - technically short, but not an answer."""
+    rule = nodes._length_rule({"length": "short"})
+    assert "COMPLETE sentences" in rule
+    assert "misleading without" in rule
 
 
 def test_medium_is_the_middle_option_people_expected():
