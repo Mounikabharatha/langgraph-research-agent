@@ -1,0 +1,40 @@
+name: Keep the demo warm
+
+# Streamlit Community Cloud sleeps an app nobody visits, and waking it takes
+# 30-60 seconds. That cold start lands on whoever opens the link from the CV.
+#
+# A plain HTTP request does NOT prevent it: fetching the URL only returns the
+# hosting shell served by share.streamlit.io. The app container itself only
+# starts when a client opens the websocket at /_stcore/stream, which is why
+# this loads the page in a real browser and waits for the app to render.
+
+on:
+  schedule:
+    # Hourly. The log line from each run says how long the load took, so if
+    # a run ever reports a cold start the interval is too long - tighten it.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Open the app and wait for it to render
+        env:
+          APP_URL: https://langgraph-research-assistant.streamlit.app
+        run: python .github/scripts/keep_warm.py
