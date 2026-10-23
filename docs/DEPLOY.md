@@ -85,9 +85,21 @@ python scripts/check_models.py
 It calls each model in the chain with the structured-output request the
 planner needs, and tells you which are working, exhausted or broken.
 
-**The app sleeps when idle** and takes 30-60 seconds to wake on the first
-visit. That is normal for the free tier; mention it if you are demonstrating
-live.
+**The app sleeps when idle** and takes 30-60 seconds to wake. Left alone that
+cold start lands on whoever opens the link from a CV, so
+`.github/workflows/keep-warm.yml` visits the app every hour to keep the
+container up, which brings a click down to a few seconds.
+
+It has to use a real browser. Requesting the URL with curl returns the
+hosting shell from share.streamlit.io, which renders the app in an iframe at
+`/~/+/`; the container itself only starts when a client opens the websocket.
+So an uptime pinger pointed at the URL looks like it is working while the app
+goes on sleeping.
+
+Each run logs how long the load took. If one reports a cold start, the hourly
+schedule is not keeping up and the cron needs tightening. Note that GitHub
+disables scheduled workflows after 60 days with no commits to the repo - if
+the demo starts feeling slow again months from now, check that first.
 
 ## Before you share the link
 
