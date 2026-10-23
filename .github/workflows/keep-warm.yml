@@ -24,15 +24,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
-      - name: Install Playwright
+      - run: pip install playwright
+
+      # The browser download is the slow part of this job, and it does not
+      # change between runs.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}
+
+      # A no-op when the cache restored it. The system libraries live outside
+      # the cached directory, so they are always installed.
+      - name: Install Chromium
         run: |
-          pip install playwright
-          playwright install --with-deps chromium
+          playwright install chromium
+          playwright install-deps chromium
 
       - name: Open the app and wait for it to render
         env:
