@@ -4,9 +4,9 @@ name: Keep the demo warm
 # 30-60 seconds. That cold start lands on whoever opens the link from the CV.
 #
 # A plain HTTP request does NOT prevent it: fetching the URL only returns the
-# hosting shell served by share.streamlit.io. The app container itself only
-# starts when a client opens the websocket at /_stcore/stream, which is why
-# this loads the page in a real browser and waits for the app to render.
+# hosting shell served by share.streamlit.io, which renders the real app in an
+# iframe. The container starts only when a client opens the websocket, so this
+# loads the page in a real browser and waits for the app itself to render.
 
 on:
   schedule:
