@@ -62,7 +62,7 @@ researches again. Otherwise it goes to human review.
 | Unlimited revision | `route_after_finalize` | Each rewrite returns to the gate; only approval ends the run |
 | Full conversation view | `report_timeline` | Question, answer and every revision, rebuilt from the checkpoints |
 | Right-sized answers | `_length_rule`, `_followup_rule` | A one-fact question gets one fact, and a follow-up skips what you already read |
-| Long-term memory | `memory.py` | Finished reports are stored and semantically recalled by later runs |
+| Long-term memory (RAG) | `memory.py` | Finished reports are embedded, indexed and semantically retrieved into later prompts |
 | Observability | `tracing.py` | Every run named and tagged, with `thread_id` in metadata |
 | Failure triage | `tools.py`, `research_node` | One dead query degrades the answer; *every* query failing stops the run |
 
@@ -141,6 +141,28 @@ what is already known.
 alternative — feeding old reports in as citable material — would blur where a
 claim actually came from, and the whole point of the synthesize prompt is that
 every claim traces to a source fetched in *this* run.
+
+### Where the RAG is
+
+The store half is retrieval-augmented generation, with the agent's own past
+research as the corpus rather than an uploaded document set:
+
+| Stage | Where | What happens |
+|---|---|---|
+| Embed | `memory.get_embeddings` | Each approved report's question becomes a 3072-dim vector (`gemini-embedding-001`) |
+| Index | `memory.open_store` | Vectors land in a SQLite vector index, namespace `("research", "reports")` |
+| Retrieve | `memory.recall` | The new question is embedded and matched by cosine similarity, top 3, floor 0.80 |
+| Augment | `nodes._recalled_context` | Hits are formatted into the planner's prompt |
+| Generate | `nodes.plan_node` | The plan is written with that retrieved context in view |
+
+Web search is the second retrieval path: Tavily results become `Finding`
+records that the synthesize prompt must cite. So the agent retrieves from two
+corpora with different rules — the web is citable, memory is not.
+
+What this is *not*: there is no document ingestion, no chunk-size or overlap
+tuning, and no external vector database. Retrieval is over whole questions,
+one vector per report, which is why the similarity floor below does the work
+that chunking strategy would do elsewhere.
 
 ### The relevance floor
 
