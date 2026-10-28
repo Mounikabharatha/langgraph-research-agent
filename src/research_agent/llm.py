@@ -103,7 +103,26 @@ def _openai(temperature: float) -> BaseChatModel:
     )
 
 
+# Copying a key out of a web page can bring an invisible character with it -
+# a line separator, a zero-width space, a non-breaking space. The key then
+# looks correct in every editor and fails authentication on every call, which
+# in a chain of fallback models reads as the app hanging rather than failing.
+# Strip them at the edges, where a pasted key collects them.
+INVISIBLE = "\u2028\u2029\u200b\ufeff\u00a0\u202f \t\r\n"
+
+
+def clean_secret(value: str) -> str:
+    """Remove whitespace and invisible characters from around a credential."""
+    return value.strip(INVISIBLE)
+
+
 def _require(var: str, hint: str) -> None:
     value = os.getenv(var, "")
+    cleaned = clean_secret(value)
+    if cleaned != value:
+        # Repair it in the environment too: the provider SDKs read the
+        # variable themselves, so cleaning only our copy would fix nothing.
+        os.environ[var] = cleaned
+        value = cleaned
     if not value or value.endswith("..."):
         raise RuntimeError(f"{var} is not set in your .env file. {hint}")

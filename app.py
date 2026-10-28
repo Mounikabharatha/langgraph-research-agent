@@ -24,7 +24,7 @@ from research_agent.graph import (
     seed_demo_data,
 )
 from research_agent.memory import describe, forget, open_store
-from research_agent.llm import model_names
+from research_agent.llm import clean_secret, model_names
 from research_agent.nodes import looks_like_a_question
 from research_agent.tracing import graph_config
 
@@ -33,9 +33,11 @@ logging.getLogger("google_genai").setLevel(logging.ERROR)
 # Locally the keys come from .env; on Streamlit Community Cloud they come
 # from the Secrets panel. Copy those into the environment so every module
 # can keep reading os.getenv and knows nothing about Streamlit.
+# `clean_secret` matters here: a key pasted into the Secrets panel can carry
+# an invisible character, which fails every API call while looking perfect.
 try:
     for _key, _value in st.secrets.items():
-        os.environ.setdefault(_key, str(_value))
+        os.environ.setdefault(_key, clean_secret(str(_value)))
 except Exception:
     pass  # no secrets file locally, which is normal
 
