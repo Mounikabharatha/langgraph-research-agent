@@ -7,11 +7,10 @@ real runs, with their sources, critic passes and revision history, and reading
 them costs nothing. The demo runs on Gemini's free tier, so new questions may
 hit a daily quota; the saved sessions always work.
 
-![The agent planning, searching the web and citing its answer](docs/demo.gif)
 
-A real run, sped up. [Watch the full two minutes](docs/demo.mp4) to see it
-critique its own draft, accept a revision instruction, and finish only once a
-human approves.
+https://github.com/user-attachments/assets/cdaacb8f-ea89-4963-b2e0-ac7f70748d76
+
+
 
 A research assistant built with [LangGraph](https://langchain-ai.github.io/langgraph/).
 Give it a question; it plans sub-questions, searches the web, writes a cited
