@@ -7,10 +7,10 @@ real runs, with their sources, critic passes and revision history, and reading
 them costs nothing. The demo runs on Gemini's free tier, so new questions may
 hit a daily quota; the saved sessions always work.
 
-
 https://github.com/user-attachments/assets/cdaacb8f-ea89-4963-b2e0-ac7f70748d76
 
-
+A full run above, sped up: a question going in, and a cited answer coming out
+the far side of a critic pass and a human approval. No narration.
 
 A research assistant built with [LangGraph](https://langchain-ai.github.io/langgraph/).
 Give it a question; it plans sub-questions, searches the web, writes a cited
