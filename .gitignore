@@ -27,3 +27,6 @@ memory.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Screen recordings kept beside the project, not committed.
+*.mov
