@@ -1,3 +1,7 @@
 # Deployment install. The ui extra brings in Streamlit itself;
 # runtime dependencies are declared in pyproject.toml.
+#
+# The version in pyproject.toml must be bumped whenever src/ changes.
+# This installs the package rather than running from the checkout, so a
+# stale build is what the app imports until the version says otherwise.
 .[ui]
